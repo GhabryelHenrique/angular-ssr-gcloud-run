@@ -1,0 +1,43 @@
+/* Paleta extraída do próprio "Deploy Angular SSR.pptx", para o app e os slides
+   se parecerem com a mesma coisa quando projetados lado a lado. */
+:root {
+  --navy: #20344b;
+  --navy-escuro: #182838;
+  --navy-cartao: #26405c;
+  --verde: #5cdb6d;
+  --cinza: #9aa0a6;
+  --branco: #ffffff;
+  --azul: #4285f4;
+  --vermelho: #ea4335;
+  --amarelo: #fbbc04;
+
+  --fonte-mono: 'Cascadia Code', 'Consolas', 'SF Mono', ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--navy);
+  color: var(--branco);
+  /* Arial é a fonte do deck. */
+  font-family: Arial, Helvetica, sans-serif;
+  /* Tipografia grande de propósito: precisa ser legível do fundo do auditório. */
+  font-size: 17px;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--verde);
+  outline-offset: 2px;
+}

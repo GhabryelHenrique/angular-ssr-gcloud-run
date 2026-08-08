@@ -1,0 +1,80 @@
+.voltar {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: var(--verde);
+  font-family: var(--fonte-mono);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.ficha {
+  max-width: 60ch;
+  padding: 2rem;
+  border: 1px solid #2f4a68;
+  border-radius: 10px;
+  background: var(--navy-cartao);
+}
+
+.ficha__categoria {
+  color: var(--cinza);
+  font-family: var(--fonte-mono);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+h1 {
+  margin: 0.4rem 0 0.8rem;
+  font-size: 2.1rem;
+  color: var(--branco);
+}
+
+.ficha__descricao {
+  margin: 0 0 1.5rem;
+  color: var(--cinza);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.ficha__compra {
+  display: flex;
+  align-items: baseline;
+  gap: 1.2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #2f4a68;
+}
+
+.ficha__preco {
+  color: var(--verde);
+  font-family: var(--fonte-mono);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.estoque {
+  color: var(--cinza);
+  font-family: var(--fonte-mono);
+}
+
+.estoque--zero {
+  color: var(--vermelho);
+}
+
+.nota {
+  margin: 1.5rem 0 0;
+  color: var(--cinza);
+  font-size: 1rem;
+  line-height: 1.6;
+
+  strong {
+    color: var(--verde);
+  }
+
+  code {
+    color: var(--amarelo);
+    font-family: var(--fonte-mono);
+  }
+}

@@ -1,0 +1,30 @@
+<header class="cabecalho">
+  <h1>Catálogo</h1>
+  <p class="explicacao">
+    Renderizado no servidor. Preço e estoque mudam a toda hora, então não cabem num build
+    estático — mas precisam estar no HTML, porque o robô de busca não espera o JavaScript.
+    Confira em <code>view-source:</code>: todos os {{ produtos().length }} itens já vêm prontos.
+  </p>
+</header>
+
+<ul class="grade">
+  @for (produto of produtos(); track produto.id) {
+    <li class="cartao">
+      <a [routerLink]="['/produto', produto.id]" class="cartao__link">
+        <span class="cartao__categoria">{{ produto.categoria }}</span>
+        <h2 class="cartao__nome">{{ produto.nome }}</h2>
+        <p class="cartao__descricao">{{ produto.descricao }}</p>
+        <div class="cartao__rodape">
+          <span class="cartao__preco">{{ produto.preco | moeda }}</span>
+          @if (produto.estoque === 0) {
+            <span class="estoque estoque--zero">esgotado</span>
+          } @else if (produto.estoque <= 4) {
+            <span class="estoque estoque--baixo">últimas {{ produto.estoque }}</span>
+          } @else {
+            <span class="estoque">{{ produto.estoque }} em estoque</span>
+          }
+        </div>
+      </a>
+    </li>
+  }
+</ul>

@@ -1,0 +1,53 @@
+<article class="texto">
+  <h1>Sobre esta demo</h1>
+
+  <p class="marcador">
+    <strong>Esta rota é Prerender.</strong> O HTML foi gerado uma única vez, durante o
+    <code>ng build</code>, e virou arquivo estático no <code>dist/browser</code>. Em produção
+    ela é servida direto do disco — nem acorda o renderizador.
+  </p>
+
+  <p class="carimbo">
+    Congelado no build em <code>{{ geradoNoBuild }}</code>
+  </p>
+
+  <p>
+    Recarregue a página quantas vezes quiser: esse carimbo <strong>não muda</strong>. Ele é do
+    momento do build, não do seu acesso. É exatamente esse o limite do prerender — e a razão
+    pela qual o catálogo, com preço e estoque, não pode usá-lo.
+  </p>
+
+  <h2>As três modalidades, lado a lado</h2>
+
+  <table class="comparativo">
+    <thead>
+      <tr>
+        <th>Rota</th>
+        <th>Modo</th>
+        <th>Quando o HTML nasce</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>/</code> e <code>/produto/:id</code></td>
+        <td class="modo modo--server">Server</td>
+        <td>A cada requisição</td>
+      </tr>
+      <tr>
+        <td><code>/sobre</code></td>
+        <td class="modo modo--prerender">Prerender</td>
+        <td>No <code>ng build</code></td>
+      </tr>
+      <tr>
+        <td><code>/painel</code></td>
+        <td class="modo modo--client">Client</td>
+        <td>Nunca — só no navegador</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    Tudo isso convive na mesma aplicação, configurado num arquivo só:
+    <code>app.routes.server.ts</code>. A escolha é por rota, não por projeto.
+  </p>
+</article>

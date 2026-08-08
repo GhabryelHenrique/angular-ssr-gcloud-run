@@ -1,0 +1,58 @@
+@let t = telemetry();
+
+<aside class="barra" [class.barra--csr]="!t">
+  @if (t) {
+    <div class="grupo grupo--destaque">
+      <span class="rotulo">render</span>
+      <span class="valor valor--forte">{{ renderOrigin() }}</span>
+      <span class="separador">·</span>
+      <span class="valor">{{ renderedAtLabel() }}</span>
+      <span class="separador">·</span>
+      <span class="valor valor--forte">{{ t.renderMs }}ms</span>
+    </div>
+
+    <div class="grupo">
+      <span class="rotulo">instância</span>
+      <span class="valor">{{ t.instanceId }}</span>
+      <span class="separador">·</span>
+      <span class="rotulo">req</span>
+      <span class="valor">#{{ t.requestNumber }}</span>
+      <span class="separador">·</span>
+      <span class="rotulo">uptime</span>
+      <span class="valor">{{ uptimeLabel() }}</span>
+    </div>
+
+    <div class="grupo">
+      <span class="selo" [class.selo--frio]="t.coldStart" [class.selo--quente]="!t.coldStart">
+        {{ t.coldStart ? 'COLD START' : 'QUENTE' }}
+      </span>
+      @if (hydrated()) {
+        <span class="selo selo--hidratado">HIDRATADO</span>
+      }
+    </div>
+
+    <div class="grupo grupo--infra">
+      <span class="rotulo">PORT</span>
+      <span class="valor">{{ t.port }}</span>
+      <span class="separador">·</span>
+      <span class="rotulo">concorrência</span>
+      <span class="valor">{{ t.inFlight }} <span class="fraco">(pico {{ t.peakInFlight }})</span></span>
+      @if (t.revision) {
+        <span class="separador">·</span>
+        <span class="rotulo">K_REVISION</span>
+        <span class="valor">{{ t.revision }}</span>
+      }
+      <span class="separador">·</span>
+      <span class="valor fraco">{{ t.platform }}</span>
+    </div>
+  } @else {
+    <div class="grupo grupo--destaque">
+      <span class="rotulo">render</span>
+      <span class="valor valor--forte">{{ renderOrigin() }}</span>
+      <span class="separador">·</span>
+      <span class="valor fraco"
+        >nenhum HTML veio do servidor — o navegador montou esta tela sozinho</span
+      >
+    </div>
+  }
+</aside>

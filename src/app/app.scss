@@ -1,0 +1,74 @@
+.navegacao {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #2f4a68;
+}
+
+.marca {
+  color: var(--branco);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.marca__fraca {
+  color: var(--cinza);
+  font-weight: 400;
+}
+
+.abas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  a {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #2f4a68;
+    border-radius: 999px;
+    color: var(--cinza);
+    font-family: var(--fonte-mono);
+    font-size: 1rem;
+    text-decoration: none;
+
+    &:hover {
+      border-color: var(--cinza);
+    }
+
+    &.ativo {
+      border-color: var(--verde);
+      background: rgba(92, 219, 109, 0.1);
+      color: var(--branco);
+    }
+  }
+}
+
+.modo {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.modo--server {
+  color: var(--verde);
+}
+
+.modo--prerender {
+  color: var(--azul);
+}
+
+.modo--client {
+  color: var(--vermelho);
+}
+
+.conteudo {
+  padding: 2.5rem 1.5rem 4rem;
+}

@@ -1,0 +1,83 @@
+.texto {
+  max-width: 75ch;
+  color: var(--cinza);
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+h1 {
+  margin: 0 0 1.2rem;
+  font-size: 2.4rem;
+  color: var(--branco);
+}
+
+h2 {
+  margin: 2.5rem 0 1rem;
+  font-size: 1.5rem;
+  color: var(--branco);
+}
+
+code {
+  color: var(--verde);
+  font-family: var(--fonte-mono);
+  font-size: 0.95em;
+}
+
+strong {
+  color: var(--branco);
+}
+
+.marcador {
+  padding: 1rem 1.2rem;
+  border-left: 3px solid var(--azul);
+  background: rgba(66, 133, 244, 0.08);
+}
+
+.carimbo {
+  padding: 0.9rem 1.2rem;
+  border: 1px dashed var(--amarelo);
+  border-radius: 8px;
+  font-family: var(--fonte-mono);
+
+  code {
+    color: var(--amarelo);
+  }
+}
+
+.comparativo {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+
+  th,
+  td {
+    padding: 0.75rem 0.9rem;
+    border-bottom: 1px solid #2f4a68;
+    text-align: left;
+  }
+
+  th {
+    color: var(--cinza);
+    font-family: var(--fonte-mono);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+}
+
+.modo {
+  font-family: var(--fonte-mono);
+  font-weight: 700;
+}
+
+.modo--server {
+  color: var(--verde);
+}
+
+.modo--prerender {
+  color: var(--azul);
+}
+
+.modo--client {
+  color: var(--vermelho);
+}

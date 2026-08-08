@@ -1,0 +1,34 @@
+<article class="texto">
+  <h1>Painel da instância</h1>
+
+  <p class="marcador">
+    <strong>Esta rota é Client.</strong> Abra o <code>view-source:</code> agora: você não vai
+    achar nenhum destes números. O servidor devolveu um <code>&lt;app-root&gt;</code> vazio, o
+    navegador baixou o bundle, executou, e só então pediu os dados. Duas viagens até o primeiro
+    pixel útil — o cenário do slide 5.
+  </p>
+
+  @if (dados(); as d) {
+    <dl class="metricas">
+      <div><dt>instância</dt><dd>{{ d.instanceId }}</dd></div>
+      <div><dt>requisições servidas</dt><dd>{{ d.requestNumber }}</dd></div>
+      <div><dt>uptime</dt><dd>{{ (d.uptimeMs / 1000).toFixed(1) }}s</dd></div>
+      <div><dt>em voo agora</dt><dd>{{ d.inFlight }}</dd></div>
+      <div><dt>pico de concorrência</dt><dd>{{ d.peakInFlight }}</dd></div>
+      <div><dt>PORT</dt><dd>{{ d.port }}</dd></div>
+      <div><dt>plataforma</dt><dd>{{ d.platform }}</dd></div>
+      @if (d.revision) {
+        <div><dt>K_REVISION</dt><dd>{{ d.revision }}</dd></div>
+      }
+    </dl>
+
+    <p class="rodape">
+      Buscado em {{ buscaMs() }}ms, <em>depois</em> de o JavaScript assumir.
+      <button type="button" (click)="carregar()">atualizar</button>
+    </p>
+  } @else if (erro()) {
+    <p class="erro">Falha ao consultar <code>/api/instancia</code>: {{ erro() }}</p>
+  } @else {
+    <p class="carregando">Carregando… (isto aqui é o custo do CSR)</p>
+  }
+</article>

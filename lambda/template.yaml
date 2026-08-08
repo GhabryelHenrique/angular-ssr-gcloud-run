@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: >
+  Angular SSR na AWS Lambda — o equivalente ao "gcloud run deploy" de uma linha.
+  Compare o tamanho deste arquivo com o comando do slide 20.
+
+Parameters:
+  NomeFuncao:
+    Type: String
+    Default: angular-ssr
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+
+Resources:
+  FuncaoSsr:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Ref NomeFuncao
+      PackageType: Image
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          NODE_ENV: production
+          # Mesma proteção anti-SSRF do Cloud Run: sem o host correto aqui,
+          # toda requisição volta 400.
+          ALLOWED_HOSTS: !Sub '*.lambda-url.${AWS::Region}.on.aws'
+
+      FunctionUrlConfig:
+        AuthType: NONE
+        # Streaming de HTML só existe via Function URL. Atrás de API Gateway,
+        # a resposta é sempre bufferizada e limitada a 6 MB.
+        InvokeMode: RESPONSE_STREAM
+
+      # Concorrência provisionada só pode apontar para um alias publicado —
+      # daí o AutoPublishAlias. Sem ele, o deploy falha na validação.
+      AutoPublishAlias: live
+
+      # Mitigação de cold start equivalente ao --min-instances do Cloud Run.
+      # Diferença importante: aqui a concorrência provisionada é por execução
+      # simultânea. O Lambda atende UMA requisição por execução, então 80
+      # requisições paralelas exigem 80 ambientes — no Cloud Run, uma
+      # instância com --concurrency 80 dá conta.
+      ProvisionedConcurrencyConfig:
+        ProvisionedConcurrentExecutions: 1
+
+    Metadata:
+      Dockerfile: lambda/Dockerfile
+      DockerContext: ..
+      DockerTag: latest
+
+Outputs:
+  UrlFuncao:
+    Description: URL pública da função
+    Value: !GetAtt FuncaoSsrUrl.FunctionUrl
+
+  Observacao:
+    Description: O que este template precisou e o Cloud Run não
+    Value: >
+      Entry point separado, configuração de build extra, adaptador de evento,
+      este template e uma Function URL com InvokeMode explícito.

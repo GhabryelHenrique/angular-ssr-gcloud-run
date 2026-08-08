@@ -1,0 +1,92 @@
+.texto {
+  max-width: 75ch;
+  color: var(--cinza);
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+h1 {
+  margin: 0 0 1.2rem;
+  font-size: 2.4rem;
+  color: var(--branco);
+}
+
+code {
+  color: var(--verde);
+  font-family: var(--fonte-mono);
+  font-size: 0.95em;
+}
+
+strong {
+  color: var(--branco);
+}
+
+.marcador {
+  padding: 1rem 1.2rem;
+  border-left: 3px solid var(--vermelho);
+  background: rgba(234, 67, 53, 0.08);
+}
+
+.metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1px;
+  margin: 2rem 0 1rem;
+  padding: 1px;
+  background: #2f4a68;
+  border-radius: 8px;
+  overflow: hidden;
+
+  > div {
+    padding: 1rem 1.2rem;
+    background: var(--navy-cartao);
+  }
+
+  dt {
+    color: var(--cinza);
+    font-family: var(--fonte-mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  dd {
+    margin: 0.35rem 0 0;
+    color: var(--verde);
+    font-family: var(--fonte-mono);
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.rodape {
+  font-family: var(--fonte-mono);
+  font-size: 0.95rem;
+}
+
+button {
+  margin-left: 0.6rem;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--verde);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--verde);
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(92, 219, 109, 0.12);
+  }
+}
+
+.carregando {
+  color: var(--amarelo);
+  font-family: var(--fonte-mono);
+}
+
+.erro {
+  color: var(--vermelho);
+  font-family: var(--fonte-mono);
+}

@@ -1,0 +1,27 @@
+<app-telemetry-bar />
+
+<nav class="navegacao">
+  <span class="marca">Angular SSR <span class="marca__fraca">no Cloud Run</span></span>
+
+  <ul class="abas">
+    <li>
+      <a routerLink="/" routerLinkActive="ativo" [routerLinkActiveOptions]="{ exact: true }">
+        / <span class="modo modo--server">Server</span>
+      </a>
+    </li>
+    <li>
+      <a routerLink="/sobre" routerLinkActive="ativo">
+        /sobre <span class="modo modo--prerender">Prerender</span>
+      </a>
+    </li>
+    <li>
+      <a routerLink="/painel" routerLinkActive="ativo">
+        /painel <span class="modo modo--client">Client</span>
+      </a>
+    </li>
+  </ul>
+</nav>
+
+<main class="conteudo">
+  <router-outlet />
+</main>
