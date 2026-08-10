@@ -1,25 +1,37 @@
+<!-- The four brand colours, used once, as a signature rather than decoration. -->
+<div class="brand-bar" aria-hidden="true">
+  <span class="brand-bar__segment brand-bar__segment--blue"></span>
+  <span class="brand-bar__segment brand-bar__segment--red"></span>
+  <span class="brand-bar__segment brand-bar__segment--yellow"></span>
+  <span class="brand-bar__segment brand-bar__segment--green"></span>
+</div>
+
 <app-telemetry-bar />
 
 <nav class="nav">
   <span class="brand">Angular SSR <span class="brand__muted">on Cloud Run</span></span>
 
-  <ul class="tabs">
-    <li>
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
-        / <span class="mode mode--server">Server</span>
-      </a>
-    </li>
-    <li>
-      <a routerLink="/about" routerLinkActive="active">
-        /about <span class="mode mode--prerender">Prerender</span>
-      </a>
-    </li>
-    <li>
-      <a routerLink="/dashboard" routerLinkActive="active">
-        /dashboard <span class="mode mode--client">Client</span>
-      </a>
-    </li>
-  </ul>
+  <div class="nav__actions">
+    <ul class="tabs">
+      <li>
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+          / <span class="mode mode--server">Server</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/about" routerLinkActive="active">
+          /about <span class="mode mode--prerender">Prerender</span>
+        </a>
+      </li>
+      <li>
+        <a routerLink="/dashboard" routerLinkActive="active">
+          /dashboard <span class="mode mode--client">Client</span>
+        </a>
+      </li>
+    </ul>
+
+    <app-theme-toggle />
+  </div>
 </nav>
 
 <main class="content">

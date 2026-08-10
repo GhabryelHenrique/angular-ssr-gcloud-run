@@ -1,18 +1,148 @@
+/* =============================================================================
+   Design tokens
+   =============================================================================
+
+   Two layers, deliberately separated:
+
+   1. A REFERENCE palette — the Google brand ramps. These are raw values and
+      are never used directly by a component.
+   2. A SEMANTIC layer — surface, on-surface, primary, outline and so on. This
+      is the only layer components consume, which is what makes a second theme
+      a matter of reassigning ~20 variables rather than auditing every file.
+
+   Both themes use the tone of each hue that actually passes contrast on its
+   own background: the 300 range on dark surfaces, the 600/700 range on light
+   ones. Using one fixed brand tone on both would fail WCAG AA on at least one.
+   ============================================================================= */
+
 :root {
-  --navy: #20344b;
-  --navy-deep: #182838;
-  --navy-card: #26405c;
-  --green: #5cdb6d;
-  --grey: #9aa0a6;
-  --white: #ffffff;
-  --blue: #4285f4;
-  --red: #ea4335;
-  --yellow: #fbbc04;
+  /* --- Reference palette: Google brand ------------------------------------ */
+  --g-blue-300: #8ab4f8;
+  --g-blue-600: #1a73e8;
+  --g-blue-700: #1967d2;
 
-  --font-mono: 'Cascadia Code', 'Consolas', 'SF Mono', ui-monospace, monospace;
+  --g-red-300: #f28b82;
+  --g-red-600: #d93025;
+  --g-red-700: #c5221f;
 
-  color-scheme: dark;
+  --g-yellow-300: #fdd663;
+  --g-yellow-600: #f9ab00;
+  --g-yellow-800: #b06000;
+
+  --g-green-300: #81c995;
+  --g-green-600: #1e8e3e;
+  --g-green-700: #188038;
+
+  /* Google neutral ramp */
+  --g-grey-050: #f8f9fa;
+  --g-grey-100: #f1f3f4;
+  --g-grey-200: #e8eaed;
+  --g-grey-300: #dadce0;
+  --g-grey-500: #9aa0a6;
+  --g-grey-600: #80868b;
+  --g-grey-700: #5f6368;
+  --g-grey-800: #3c4043;
+  --g-grey-900: #202124;
+  --g-grey-1000: #171717;
+
+  /* --- Typography --------------------------------------------------------- */
+  /* Google Sans is not redistributable, so this falls back through Roboto to
+     the platform UI font. No webfont download, no layout shift. */
+  --font-sans: 'Google Sans', 'Google Sans Text', Roboto, 'Segoe UI',
+    -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Roboto Mono', 'Cascadia Code', Consolas, 'SF Mono', ui-monospace,
+    monospace;
+
+  /* --- Shape and elevation ------------------------------------------------ */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+
+  /* --- Semantic layer: LIGHT (default) ------------------------------------ */
+  color-scheme: light;
+
+  --surface: #ffffff;
+  --surface-sunken: var(--g-grey-050);
+  --surface-raised: #ffffff;
+
+  --on-surface: var(--g-grey-900);
+  --on-surface-variant: var(--g-grey-700);
+
+  --outline: var(--g-grey-300);
+  --outline-variant: var(--g-grey-200);
+  /* Borders that define an interactive control need 3:1 against their
+     background (WCAG 1.4.11), which the decorative --outline does not reach.
+     Measured: 3.68:1 on white, 4.37:1 on the dark surface. */
+  --outline-interactive: var(--g-grey-600);
+
+  --primary: var(--g-blue-600);
+  --on-primary: #ffffff;
+  --primary-container: rgba(26, 115, 232, 0.1);
+
+  /* Render-mode semantics, used across the UI to keep one idea one colour. */
+  --mode-server: var(--g-green-700);
+  --mode-server-container: rgba(24, 128, 56, 0.12);
+  --mode-prerender: var(--g-blue-600);
+  --mode-prerender-container: rgba(26, 115, 232, 0.1);
+  --mode-client: var(--g-red-600);
+  --mode-client-container: rgba(217, 48, 37, 0.1);
+
+  --warning: var(--g-yellow-800);
+  --warning-container: rgba(249, 171, 0, 0.16);
+
+  --elevation-1: 0 1px 2px rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+  --elevation-2: 0 1px 3px rgba(60, 64, 67, 0.3), 0 4px 8px 3px rgba(60, 64, 67, 0.15);
 }
+
+/* --- Semantic layer: DARK ------------------------------------------------- */
+@mixin dark-theme {
+  color-scheme: dark;
+
+  --surface: var(--g-grey-900);
+  --surface-sunken: var(--g-grey-1000);
+  --surface-raised: #292a2d;
+
+  --on-surface: var(--g-grey-200);
+  --on-surface-variant: var(--g-grey-500);
+
+  --outline: var(--g-grey-800);
+  --outline-variant: #2a2b2e;
+  --outline-interactive: var(--g-grey-600);
+
+  --primary: var(--g-blue-300);
+  --on-primary: var(--g-grey-900);
+  --primary-container: rgba(138, 180, 248, 0.16);
+
+  --mode-server: var(--g-green-300);
+  --mode-server-container: rgba(129, 201, 149, 0.16);
+  --mode-prerender: var(--g-blue-300);
+  --mode-prerender-container: rgba(138, 180, 248, 0.16);
+  --mode-client: var(--g-red-300);
+  --mode-client-container: rgba(242, 139, 130, 0.16);
+
+  --warning: var(--g-yellow-300);
+  --warning-container: rgba(253, 214, 99, 0.16);
+
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 3px 1px rgba(0, 0, 0, 0.3);
+  --elevation-2: 0 1px 3px rgba(0, 0, 0, 0.6), 0 4px 8px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* System preference wins when the visitor has expressed no choice. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include dark-theme;
+  }
+}
+
+/* An explicit choice always wins over the system preference. */
+:root[data-theme='dark'] {
+  @include dark-theme;
+}
+
+/* =============================================================================
+   Base
+   ============================================================================= */
 
 * {
   box-sizing: border-box;
@@ -26,15 +156,29 @@ body {
 
 body {
   min-height: 100vh;
-  background: var(--navy);
-  color: var(--white);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface);
+  color: var(--on-surface);
+  font-family: var(--font-sans);
   /* Deliberately large: this app is often shown on a projector. */
   font-size: 17px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
 }
 
 :focus-visible {
-  outline: 2px solid var(--green);
+  outline: 3px solid var(--primary);
   outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -229,6 +229,64 @@ tutorials fails at `npm ci`. This project uses `node:22-alpine`.
 
 ---
 
+## Design system
+
+The UI is built on Google's brand palette with a two-layer token system in
+[`src/styles.scss`](src/styles.scss):
+
+1. A **reference palette** — the raw Google brand ramps and neutral greys.
+   Components never touch these directly.
+2. A **semantic layer** — `--surface`, `--on-surface`, `--primary`,
+   `--outline`, and so on. This is the only layer components consume, which is
+   why adding the second theme meant reassigning about twenty variables instead
+   of auditing every stylesheet.
+
+Colour also carries meaning here: each render mode keeps one hue everywhere it
+appears, so the telemetry bar's left border tells you which mode you are
+looking at before you read a word.
+
+| Render mode | Light | Dark |
+| --- | --- | --- |
+| Server | Google Green `#188038` | `#81c995` |
+| Prerender | Google Blue `#1a73e8` | `#8ab4f8` |
+| Client | Google Red `#d93025` | `#f28b82` |
+
+### Themes
+
+Light and dark, following the system preference by default and overridable
+with the toggle in the header. Two details are worth copying:
+
+- **No flash of the wrong theme.** A small inline script in
+  [`index.html`](src/index.html) applies `data-theme` before first paint. The
+  server cannot know a visitor's preference, so a theme decision made after
+  bootstrap always arrives too late.
+- **No hydration mismatch.** Nothing in the rendered markup depends on the
+  theme — the toggle ships both icons and CSS reveals one. Server and client
+  therefore produce identical HTML even when the stored preference differs from
+  the server's default.
+
+Inside a component, reacting to `data-theme` requires `:host-context()`, not
+`:root`. Under emulated view encapsulation Angular rewrites `:root .icon` into
+`[_ngcontent-x]:root .icon[_ngcontent-x]`, which can never match because
+`<html>` carries no component attribute — a rule that silently does nothing.
+
+### Contrast
+
+Every text token was measured rather than assumed. All pass WCAG AA (4.5:1),
+in both themes:
+
+| | Light | Dark |
+| --- | --- | --- |
+| Body text | 16.1:1 | 13.4:1 |
+| Secondary text | 6.1:1 | 6.1:1 |
+| Primary / links | 4.5:1 | 7.6:1 |
+| Server green | 5.0:1 | 8.2:1 |
+| Client red | 4.8:1 | 6.7:1 |
+
+Interactive controls use a separate `--outline-interactive` token, because the
+decorative border colour reaches only 1.4:1 against white — well short of the
+3:1 that WCAG 1.4.11 requires for the boundary of a control.
+
 ## How the telemetry works
 
 The pattern is reusable for any server-only value the UI must keep after
@@ -251,12 +309,17 @@ Skip step 3 and the bar goes blank the moment JavaScript takes over.
 ```text
 ├── src/
 │   ├── server.ts                    Express + telemetry, logs, /healthz, /api/instance
+│   ├── styles.scss                  Design tokens and the two themes
+│   ├── index.html                   Pre-paint theme script
 │   └── app/
 │       ├── app.routes.server.ts     Server | Prerender | Client — start here
 │       ├── core/
 │       │   ├── telemetry.ts         REQUEST_CONTEXT -> TransferState bridge
+│       │   ├── theme.ts             Light/dark control
 │       │   └── catalog.ts
-│       ├── shared/telemetry-bar/    The sticky bar at the top
+│       ├── shared/
+│       │   ├── telemetry-bar/       The sticky bar at the top
+│       │   └── theme-toggle/
 │       └── pages/{catalog,product,about,dashboard}/
 ├── demo/                            Measurement scripts
 ├── lambda/                          The same app on AWS Lambda, for comparison

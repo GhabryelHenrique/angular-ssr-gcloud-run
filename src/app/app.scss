@@ -1,3 +1,28 @@
+.brand-bar {
+  display: flex;
+  height: 4px;
+}
+
+.brand-bar__segment {
+  flex: 1;
+}
+
+.brand-bar__segment--blue {
+  background: #4285f4;
+}
+
+.brand-bar__segment--red {
+  background: #ea4335;
+}
+
+.brand-bar__segment--yellow {
+  background: #fbbc04;
+}
+
+.brand-bar__segment--green {
+  background: #34a853;
+}
+
 .nav {
   display: flex;
   flex-wrap: wrap;
@@ -5,18 +30,27 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #2f4a68;
+  border-bottom: 1px solid var(--outline);
+  background: var(--surface);
 }
 
 .brand {
-  color: var(--white);
+  color: var(--on-surface);
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .brand__muted {
-  color: var(--grey);
+  color: var(--on-surface-variant);
   font-weight: 400;
+}
+
+.nav__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .tabs {
@@ -32,43 +66,49 @@
     align-items: baseline;
     gap: 0.55rem;
     padding: 0.5rem 1rem;
-    border: 1px solid #2f4a68;
-    border-radius: 999px;
-    color: var(--grey);
+    border: 1px solid var(--outline-interactive);
+    border-radius: var(--radius-full);
+    color: var(--on-surface-variant);
     font-family: var(--font-mono);
-    font-size: 1rem;
+    font-size: 0.95rem;
     text-decoration: none;
+    transition:
+      background-color 120ms ease,
+      border-color 120ms ease;
 
     &:hover {
-      border-color: var(--grey);
+      background: var(--surface-sunken);
+      border-color: var(--on-surface-variant);
     }
 
     &.active {
-      border-color: var(--green);
-      background: rgba(92, 219, 109, 0.1);
-      color: var(--white);
+      border-color: var(--primary);
+      background: var(--primary-container);
+      color: var(--on-surface);
     }
   }
 }
 
 .mode {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .mode--server {
-  color: var(--green);
+  color: var(--mode-server);
 }
 
 .mode--prerender {
-  color: var(--blue);
+  color: var(--mode-prerender);
 }
 
 .mode--client {
-  color: var(--red);
+  color: var(--mode-client);
 }
 
 .content {
   padding: 2.5rem 1.5rem 4rem;
+  background: var(--surface);
 }

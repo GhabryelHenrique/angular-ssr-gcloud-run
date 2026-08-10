@@ -7,16 +7,19 @@
   align-items: center;
   gap: 0.5rem 2rem;
   padding: 0.85rem 1.5rem;
-  border-bottom: 2px solid var(--green);
-  background: var(--navy-deep);
-  color: var(--grey);
+  border-bottom: 1px solid var(--outline);
+  border-left: 4px solid var(--mode-server);
+  background: var(--surface-sunken);
+  color: var(--on-surface-variant);
   font-family: var(--font-mono);
-  font-size: 1.05rem;
+  font-size: 1.02rem;
   line-height: 1.4;
 }
 
+/* A client-rendered page gets the client accent, so the colour of the bar
+   alone tells you which mode you are looking at. */
 .bar--csr {
-  border-bottom-color: var(--red);
+  border-left-color: var(--mode-client);
 }
 
 .group {
@@ -27,58 +30,64 @@
 }
 
 .group--primary .value--strong {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
 }
 
 .label {
-  color: var(--grey);
+  color: var(--on-surface-variant);
   text-transform: uppercase;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
 }
 
 .value {
-  color: var(--white);
+  color: var(--on-surface);
   font-variant-numeric: tabular-nums;
 }
 
 .value--strong {
-  color: var(--green);
+  color: var(--mode-server);
   font-weight: 700;
 }
 
+.bar--csr .value--strong {
+  color: var(--mode-client);
+}
+
 .muted {
-  color: var(--grey);
+  color: var(--on-surface-variant);
   font-weight: 400;
 }
 
 .divider {
-  color: #3d5570;
+  color: var(--outline);
 }
 
 .badge {
   padding: 0.2rem 0.7rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  border: 1px solid transparent;
 }
 
 .badge--cold {
-  background: var(--yellow);
-  color: #20344b;
+  background: var(--warning-container);
+  border-color: var(--warning);
+  color: var(--warning);
 }
 
 .badge--warm {
-  background: rgba(92, 219, 109, 0.15);
-  color: var(--green);
-  border: 1px solid var(--green);
+  background: var(--mode-server-container);
+  border-color: var(--mode-server);
+  color: var(--mode-server);
 }
 
 .badge--hydrated {
-  background: rgba(66, 133, 244, 0.15);
-  color: var(--blue);
-  border: 1px solid var(--blue);
+  background: var(--mode-prerender-container);
+  border-color: var(--mode-prerender);
+  color: var(--mode-prerender);
 }
 
 @media (width <= 900px) {
