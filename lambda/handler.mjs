@@ -1,83 +1,79 @@
 /**
- * Adaptador Lambda ↔ Angular SSR.
+ * Lambda ↔ Angular SSR adapter.
  *
- * Traduz o evento da AWS (API Gateway v2 / Function URL) para o `Request` do
- * padrão web que o Angular entende, e o `Response` de volta para o formato que
- * o Lambda espera.
+ * Translates an AWS event (API Gateway v2 / Function URL) into the
+ * web-standard `Request` Angular understands, and the resulting `Response`
+ * back into the shape Lambda expects.
  *
- * No Cloud Run nada disso existe: o container recebe HTTP de verdade.
+ * None of this exists on Cloud Run: the container receives real HTTP.
  */
 
-// Gerado por: ng build --configuration lambda
-import { reqHandler } from './dist/poc-cloud-run/server/server.mjs';
+// Produced by: npm run build:lambda
+import { reqHandler } from './dist/angular-ssr-cloud-run/server/server.mjs';
 
 /**
- * Monta a URL absoluta a partir do evento.
+ * Rebuilds the absolute URL from the event.
  *
- * O Angular precisa de URL absoluta (ele valida o host contra a lista de
- * allowedHosts). O evento da AWS entrega o caminho e o domínio em campos
- * separados, então a reconstrução é manual.
+ * Angular needs an absolute URL because it validates the host against its
+ * allowedHosts list. The AWS event delivers path and domain in separate
+ * fields, so the reconstruction is manual.
  */
-function montarUrl(evento) {
-  const dominio = evento.requestContext?.domainName ?? evento.headers?.host ?? 'localhost';
-  const caminho = evento.rawPath ?? evento.path ?? '/';
-  const query = evento.rawQueryString ? `?${evento.rawQueryString}` : '';
+function buildUrl(event) {
+  const domain = event.requestContext?.domainName ?? event.headers?.host ?? 'localhost';
+  const path = event.rawPath ?? event.path ?? '/';
+  const query = event.rawQueryString ? `?${event.rawQueryString}` : '';
 
-  return `https://${dominio}${caminho}${query}`;
+  return `https://${domain}${path}${query}`;
 }
 
-function montarRequest(evento) {
-  const metodo = evento.requestContext?.http?.method ?? evento.httpMethod ?? 'GET';
+function buildRequest(event) {
+  const method = event.requestContext?.http?.method ?? event.httpMethod ?? 'GET';
 
-  const cabecalhos = new Headers();
-  for (const [chave, valor] of Object.entries(evento.headers ?? {})) {
-    if (valor !== undefined) {
-      cabecalhos.set(chave, valor);
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(event.headers ?? {})) {
+    if (value !== undefined) {
+      headers.set(key, value);
     }
   }
-  // Function URL entrega cookies num array à parte, fora dos headers.
-  if (evento.cookies?.length) {
-    cabecalhos.set('cookie', evento.cookies.join('; '));
+  // Function URLs deliver cookies in a separate array, outside the headers.
+  if (event.cookies?.length) {
+    headers.set('cookie', event.cookies.join('; '));
   }
 
-  let corpo;
-  if (evento.body !== undefined && evento.body !== null && metodo !== 'GET' && metodo !== 'HEAD') {
-    corpo = evento.isBase64Encoded ? Buffer.from(evento.body, 'base64') : evento.body;
+  let body;
+  if (event.body !== undefined && event.body !== null && method !== 'GET' && method !== 'HEAD') {
+    body = event.isBase64Encoded ? Buffer.from(event.body, 'base64') : event.body;
   }
 
-  return new Request(montarUrl(evento), {
-    method: metodo,
-    headers: cabecalhos,
-    body: corpo,
-  });
+  return new Request(buildUrl(event), { method, headers, body });
 }
 
 /**
- * Handler com resposta bufferizada.
+ * Buffered handler.
  *
- * Limite da AWS: 6 MB de payload. Passou disso, a invocação falha — e uma
- * página com muito HTML inline chega perto. Para respostas maiores (ou para
- * enviar o HTML em pedaços, como o Cloud Run faz por padrão), é preciso o
- * modo de streaming abaixo.
+ * AWS caps the payload at 6 MB. Exceed it and the invocation fails — and a
+ * page with a lot of inline HTML gets closer to that than you would expect.
+ * Larger responses, or sending HTML in chunks the way Cloud Run does by
+ * default, require the streaming handler below.
  */
-export const handler = async (evento) => {
-  const resposta = await reqHandler(montarRequest(evento));
+export const handler = async (event) => {
+  const response = await reqHandler(buildRequest(event));
 
-  const cabecalhos = {};
+  const headers = {};
   const cookies = [];
-  resposta.headers.forEach((valor, chave) => {
-    if (chave.toLowerCase() === 'set-cookie') {
-      cookies.push(valor);
+  response.headers.forEach((value, key) => {
+    if (key.toLowerCase() === 'set-cookie') {
+      cookies.push(value);
     } else {
-      cabecalhos[chave] = valor;
+      headers[key] = value;
     }
   });
 
-  const buffer = Buffer.from(await resposta.arrayBuffer());
+  const buffer = Buffer.from(await response.arrayBuffer());
 
   return {
-    statusCode: resposta.status,
-    headers: cabecalhos,
+    statusCode: response.status,
+    headers,
     cookies,
     body: buffer.toString('base64'),
     isBase64Encoded: true,
@@ -85,50 +81,50 @@ export const handler = async (evento) => {
 };
 
 /**
- * Handler com streaming.
+ * Streaming handler.
  *
- * `awslambda` é um global que só existe dentro do runtime da AWS — daí a
- * guarda. Exige Function URL com InvokeMode RESPONSE_STREAM: atrás de API
- * Gateway o streaming não funciona.
+ * `awslambda` is a global that only exists inside the AWS runtime, hence the
+ * guard. It requires a Function URL with `InvokeMode: RESPONSE_STREAM`;
+ * behind API Gateway, streaming does not work at all.
  *
- * Repare no tamanho desta função comparado ao que o Cloud Run precisou para
- * ter streaming de HTML: nada. É o comportamento padrão de um servidor HTTP.
+ * Compare the size of this function with what Cloud Run needed to stream
+ * HTML: nothing. It is the default behaviour of an HTTP server.
  */
 export const streamingHandler =
   typeof awslambda !== 'undefined'
-    ? awslambda.streamifyResponse(async (evento, fluxoResposta) => {
-        const resposta = await reqHandler(montarRequest(evento));
+    ? awslambda.streamifyResponse(async (event, responseStream) => {
+        const response = await reqHandler(buildRequest(event));
 
-        const cabecalhos = {};
+        const headers = {};
         const cookies = [];
-        resposta.headers.forEach((valor, chave) => {
-          if (chave.toLowerCase() === 'set-cookie') {
-            cookies.push(valor);
+        response.headers.forEach((value, key) => {
+          if (key.toLowerCase() === 'set-cookie') {
+            cookies.push(value);
           } else {
-            cabecalhos[chave] = valor;
+            headers[key] = value;
           }
         });
 
-        const fluxo = awslambda.HttpResponseStream.from(fluxoResposta, {
-          statusCode: resposta.status,
-          headers: cabecalhos,
+        const stream = awslambda.HttpResponseStream.from(responseStream, {
+          statusCode: response.status,
+          headers,
           cookies,
         });
 
-        if (!resposta.body) {
-          fluxo.end();
+        if (!response.body) {
+          stream.end();
           return;
         }
 
-        const leitor = resposta.body.getReader();
+        const reader = response.body.getReader();
         try {
           for (;;) {
-            const { done, value } = await leitor.read();
+            const { done, value } = await reader.read();
             if (done) break;
-            fluxo.write(value);
+            stream.write(value);
           }
         } finally {
-          fluxo.end();
+          stream.end();
         }
       })
     : undefined;

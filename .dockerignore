@@ -1,22 +1,21 @@
-# Contexto de build enxuto (slide 19). Tudo listado aqui nunca é enviado ao
-# daemon do Docker nem ao Cloud Build — build mais rápido e imagem menor.
-
-# O maior ofensor deste repositório: 17 MB de slides que não têm a menor
-# utilidade dentro de um container.
-*.pptx
+# Keep the build context small. Anything listed here is never sent to the
+# Docker daemon or to Cloud Build, which speeds up builds and keeps the image
+# free of files it has no use for.
 
 node_modules
 dist
 .angular
 .git
 .gitignore
+.github
 .vscode
 
-# Scripts de palco e a comparação com AWS não entram na imagem do Cloud Run.
+# Stage scripts and the AWS comparison are not part of the Cloud Run image.
 demo
 lambda
 
 *.md
+*.pptx
 cloudbuild.yaml
 Dockerfile
 .dockerignore

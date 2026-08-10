@@ -1,5 +1,5 @@
 {
-  "name": "poc-cloud-run",
+  "name": "angular-ssr-cloud-run",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
@@ -8,8 +8,8 @@
     "build:lambda": "ng build --configuration lambda",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "start:ssr": "node dist/poc-cloud-run/server/server.mjs",
-    "serve:ssr:poc-cloud-run": "node dist/poc-cloud-run/server/server.mjs"
+    "start:ssr": "node dist/angular-ssr-cloud-run/server/server.mjs",
+    "serve:ssr:angular-ssr-cloud-run": "node dist/angular-ssr-cloud-run/server/server.mjs"
   },
   "private": true,
   "packageManager": "npm@11.13.0",

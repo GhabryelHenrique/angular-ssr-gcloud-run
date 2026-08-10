@@ -1,235 +1,294 @@
-# Deploy Serverless de Angular SSR — POC de demonstração
+# Angular SSR on Google Cloud Run
 
-Demo ao vivo da palestra **"Deploy Serverless de Angular SSR: escalabilidade
-automática com Google Cloud Run"** (slide 27 — *Mão na massa*).
+A reference project showing how to deploy an **Angular 22** server-side
+rendered application to serverless — and, more importantly, what actually
+happens once you do.
 
-Angular **22.1.3** · Node **22** · roda inteiro em Docker local, sem nuvem e
-sem rede.
+Server-side rendering is easy to turn on. Keeping the resulting Node process
+cheap, elastic and observable is the part tutorials skip. This repository makes
+that part measurable: the app reports the infrastructure it is running on, and
+a set of scripts turns claims about cold starts, concurrency and image size
+into numbers you can reproduce on your own machine.
 
----
-
-## O que esta POC prova
-
-Cada tese do deck vira um número na tela, não uma afirmação:
-
-| Slide | Tese | Onde se prova |
-|---|---|---|
-| 5, 8 | SSR devolve HTML pronto; prerender basta para estático | 3 rotas com `RenderMode` diferente, comparadas no `view-source:` |
-| 13 | `PORT` injetada, container comum, concorrência alta | `demo\4-concorrencia.ps1` |
-| 17 | O build gera estáticos + servidor Node | `demo\1-build.ps1` |
-| 18, 19 | Multi-stage, imagem enxuta, cache de camadas | `demo\2-imagem.ps1` |
-| 20, 21 | Deploy em um comando; pipeline de CI/CD | `demo\5-deploy.ps1`, `cloudbuild.yaml` |
-| 22, 23, 24 | Cold start decomposto; frio vs quente | `demo\3-coldstart.ps1` |
-| 26 | Log estruturado em JSON | `docker logs` de qualquer container da demo |
-| 14 | O Lambda exige adaptação que o Cloud Run dispensa | [`lambda/`](lambda/README.md) |
-
-## Números medidos nesta máquina
-
-Para você saber o que esperar no palco (Docker Desktop, Windows 11, Node 24):
-
-| Medição | Valor |
-|---|---|
-| Primeiro acesso, instância fria | **261 ms** |
-| Acessos seguintes, instância quente | **19 ms** (mediana) |
-| Diferença | **14,1x** |
-| Imagem final | **235 MB** (2,37 MB são o seu código) |
-| HTML da rota SSR | **18.896 bytes**, catálogo incluso |
-| HTML da rota CSR | **1.198 bytes**, casca vazia |
-| 50 requisições paralelas | **1 instância**, pico de 50 simultâneas |
+**Everything runs on local Docker.** No cloud account, no billing, no network
+required.
 
 ---
 
-## Antes de subir ao palco
+## What you'll learn
 
-```powershell
+- **Hybrid rendering** — `Server`, `Prerender` and `Client` routes side by side
+  in one app, so you can compare their `view-source:` output directly.
+- **Cold starts, decomposed** — provisioning, Node boot, first render and warm
+  render measured separately instead of lumped into one scary number.
+- **Why high concurrency works for SSR** — and the case where it does not.
+- **Container images that stay small** — why the runtime image here needs no
+  `node_modules` at all.
+- **Structured logging** in the format Cloud Logging indexes natively.
+- **Two Angular 22 traps** that break deployments and only surface in
+  production ([details below](#two-angular-22-traps-worth-knowing)).
+
+---
+
+## Quick start
+
+Requires **Node 22.22+ / 24.15+** (Angular 22 dropped Node 20) and Docker.
+
+```bash
 npm install
 npm run build
 docker build -t angular-ssr-demo:local .
-```
-
-Deixe o **Docker Desktop já aberto**: ele leva ~30s para subir e é o único
-pré-requisito real da demo.
-
----
-
-## Roteiro da demo
-
-Os scripts são numerados na ordem de apresentação. Todos aceitam `-?` para ver
-os parâmetros.
-
-### 1. O build (slide 17)
-
-```powershell
-.\demo\1-build.ps1
-```
-
-Mostra o `dist/` separado em `browser/` (estáticos + rotas prerenderizadas) e
-`server/` (o processo Node). Repare no `sobre/index.html`: é a rota `Prerender`
-virando arquivo de verdade no build.
-
-### 2. A imagem (slides 18 e 19)
-
-```powershell
-.\demo\2-imagem.ps1
-# ou, para medir também o build do zero (leva ~1-2 min):
-.\demo\2-imagem.ps1 -SemCache
-```
-
-O ponto alto é a lista de camadas: **2,37 MB de código e nenhum `node_modules`**.
-O builder do Angular embute o Express dentro do `server.mjs`, então a imagem
-final carrega só o `dist`.
-
-### 3. O cold start (slides 22, 23 e 24)
-
-```powershell
-.\demo\3-coldstart.ps1
-
-# Para encenar um backend lento inflando o estágio 3:
-.\demo\3-coldstart.ps1 -AtrasoMs 800
-```
-
-Decompõe o cold start nos quatro estágios do slide 22 e fecha com a comparação
-frio × quente do slide 24.
-
-### 4. A concorrência (slide 13)
-
-```powershell
-.\demo\4-concorrencia.ps1
-```
-
-Roda **dois cenários** e a diferença entre eles é o argumento inteiro:
-
-- **A) Render puro** — trabalho de CPU, e o Node tem uma thread só. Os renders
-  se enfileiram e o pico de simultaneidade fica em ~3.
-- **B) Com chamada externa de 500 ms** — enquanto uma requisição espera I/O, o
-  event loop atende as outras. Pico de **50** simultâneas, e a rajada que
-  levaria 25 s em série termina em ~1 s.
-
-Página real chama API, então o cenário B é o de produção. É por isso que
-`--concurrency 80` faz sentido para SSR.
-
-### 5. As três modalidades de render (slides 5, 8 e 15)
-
-```powershell
 docker run --rm -e PORT=8080 -p 8080:8080 angular-ssr-demo:local
 ```
 
-Abra `view-source:` em cada rota — é o momento mais visual da apresentação:
+Open <http://localhost:8080>. A telemetry bar at the top reports, on every
+reload: render origin, render time, instance id, request number, **cold start
+or warm**, `PORT`, and current concurrency.
 
-| Rota | Modo | O que aparece no `view-source:` |
-|---|---|---|
-| `http://localhost:8080/` | `Server` | ~18.900 bytes, os 12 produtos no HTML |
-| `http://localhost:8080/sobre` | `Prerender` | HTML completo, congelado no build |
-| `http://localhost:8080/painel` | `Client` | **~1.200 bytes**, `<app-root>` vazio |
-
-A barra de telemetria no topo mostra, a cada recarga: origem do render, tempo,
-identificador da instância, número da requisição, **COLD START/QUENTE**, `PORT`
-e a concorrência do momento.
-
-Vale recarregar `/sobre` algumas vezes: o carimbo de data **não muda**, porque
-é do build — o limite do prerender, ao vivo.
-
-### 6. Os logs estruturados (slide 26)
-
-```powershell
-docker logs <container>
-```
-
-Uma linha JSON por requisição, no formato que o Cloud Logging indexa
-nativamente: `severity`, `renderMs`, `coldStart`, `requestNumber`, `status`. Se
-houver `GOOGLE_CLOUD_PROJECT`, o campo de trace é preenchido e o log passa a
-correlacionar com o Cloud Trace.
-
-### 7. O deploy (slides 20 e 21)
-
-```powershell
-.\demo\5-deploy.ps1              # só imprime o comando — não executa nada
-.\demo\5-deploy.ps1 -Executar    # exige gcloud e confirmação digitada
-```
-
-O `cloudbuild.yaml` cobre o slide 21: build com cache, push para o Artifact
-Registry e deploy, com cada revisão imutável.
+Prefer to skip Docker? `npm run build && npm run start:ssr` works too.
 
 ---
 
-## Duas armadilhas do Angular 22 que valem palco
+## The three render modes
 
-### 1. `allowedHosts` vazio derruba o deploy
+The whole idea fits in one file, [`app.routes.server.ts`](src/app/app.routes.server.ts).
+Open `view-source:` on each route — the difference is immediate:
 
-O `ng new --ssr` gera isto no `angular.json`:
+| Route | Mode | Raw HTML | What it means |
+| --- | --- | --- | --- |
+| `/` | `Server` | **~18.9 kB**, all 12 products present | Rendered per request. Price and stock are current. |
+| `/about` | `Prerender` | Full HTML, frozen at build time | Generated once by `ng build`. Never wakes the renderer. |
+| `/dashboard` | `Client` | **~1.2 kB**, empty `<app-root>` | Nothing rendered. The browser does all the work. |
+
+Reload `/about` a few times: its timestamp **never changes**, because it
+belongs to the build, not to your visit. That is the limit of prerendering, and
+the reason a live catalog cannot use it.
+
+`/dashboard` is the control group. It fetches the same data the server-rendered
+pages already had, but only after the bundle has downloaded and executed — two
+round trips before the first useful pixel.
+
+---
+
+## Measuring things yourself
+
+Five scripts, in the order they make sense. All accept `-?` for parameters.
+
+### `demo/1-build.ps1` — the build output
+
+Shows `dist/` split into `browser/` (static assets and prerendered routes) and
+`server/` (the Node process). Watch for `about/index.html`: that is the
+prerendered route materializing as a real file.
+
+### `demo/2-image.ps1` — the container image
+
+```powershell
+.\demo\2-image.ps1            # fast, uses layer cache
+.\demo\2-image.ps1 -NoCache   # honest cold-build number, ~1-2 min
+```
+
+The layer breakdown is the interesting part: **2.37 MB of application code and
+no `node_modules`**. Angular's application builder bundles Express into
+`server.mjs`, so the runtime image needs zero installed packages.
+
+### `demo/3-cold-start.ps1` — cold start, stage by stage
+
+```powershell
+.\demo\3-cold-start.ps1
+.\demo\3-cold-start.ps1 -DelayMs 800   # simulate a slow upstream API
+```
+
+Measured on a developer laptop (Docker Desktop, Windows 11):
+
+| Stage | Time |
+| --- | --- |
+| Container created | 417 ms |
+| First connection accepted (Node booted) | 567 ms |
+| First render | **261 ms** |
+| Warm render (median of 20) | **19 ms** |
+| **Cold vs warm** | **14.1x** |
+
+A local container skips the image-layer download and network latency Cloud Run
+pays during provisioning, so absolute numbers are higher in the cloud. The
+*ratio* is what reproduces faithfully — and the ratio is the point.
+
+The fix is not to make rendering faster. It is `--min-instances 1`, which keeps
+one instance warm so real users land in the warm column.
+
+### `demo/4-concurrency.ps1` — one instance, many requests
+
+This one runs **two scenarios**, and the contrast is the whole lesson:
+
+| | Pure render (CPU) | With a 500 ms upstream call |
+| --- | --- | --- |
+| Requests completed | 50 | 50 |
+| Instances that answered | **1** | **1** |
+| Peak simultaneous requests | 3 | **50** |
+| Total burst time | 806 ms | 1,007 ms |
+
+Scenario A looks disappointing until you understand it: rendering is CPU work
+and Node has one thread, so renders queue. Scenario B is what production
+actually looks like — pages call APIs, and while one request waits on I/O the
+event loop serves the rest. Fifty requests that would take 25 seconds serially
+finish in one.
+
+That is what `--concurrency 80` buys: fewer instances for the same traffic, and
+fewer instances is a smaller bill. It also tells you when to scale out on
+instances instead — when your bottleneck is genuinely CPU.
+
+### `demo/5-deploy.ps1` — deploying
+
+```powershell
+.\demo\5-deploy.ps1            # prints the command, runs nothing
+.\demo\5-deploy.ps1 -Execute   # requires gcloud and a typed confirmation
+```
+
+```bash
+gcloud run deploy angular-ssr \
+    --source . \
+    --region southamerica-east1 \
+    --allow-unauthenticated \
+    --cpu 1 --memory 512Mi \
+    --concurrency 80 \
+    --min-instances 1 --max-instances 20 \
+    --cpu-boost
+```
+
+[`cloudbuild.yaml`](cloudbuild.yaml) covers the CI/CD path: build with layer
+cache, push to Artifact Registry, deploy. Every deploy creates an immutable
+revision, which is what makes traffic splitting and one-click rollback work.
+
+---
+
+## Observability
+
+The server emits one JSON line per request, in the shape Cloud Logging indexes
+without configuration:
+
+```json
+{"severity":"INFO","message":"GET /","instanceId":"c0e96f3d","renderMs":105,
+ "coldStart":true,"requestNumber":1,"inFlight":1,"path":"/","status":200}
+```
+
+`severity` becomes the real log level, so you can alert on `severity=ERROR`
+without parsing text. When `GOOGLE_CLOUD_PROJECT` is set, each line also
+carries a Cloud Trace correlation id, letting you jump from a log entry to the
+full request.
+
+Two response headers help from the outside: `Server-Timing: render;dur=N` and
+`X-Instance-Id`.
+
+---
+
+## Two Angular 22 traps worth knowing
+
+### 1. An empty `allowedHosts` list breaks your deployment
+
+`ng new --ssr` generates this:
 
 ```json
 "security": { "allowedHosts": [] }
 ```
 
-Com a lista vazia, o Angular 22 responde **400 Bad Request a qualquer host** —
-é a proteção contra SSRF. Localmente ninguém percebe, porque `ng serve` trata
-isso à parte. Aí você faz o deploy e **toda requisição volta 400**.
+With an empty list, Angular 22 answers **400 Bad Request to every host** — this
+is its SSRF protection. You will not notice locally, because `ng serve` handles
+it separately. Then you deploy and **every request returns 400**.
 
-Nesta POC a lista está preenchida:
+This project sets it explicitly:
 
 ```json
 "security": { "allowedHosts": ["localhost", "127.0.0.1", "*.run.app"] }
 ```
 
-E como o domínio próprio nem sempre é conhecido no momento do build, o
-`src/server.ts` aceita hosts extras por variável de ambiente:
+Matching supports exact hosts, `*` for everything, and `*.suffix` wildcards.
+Because a custom domain is often unknown at build time,
+[`src/server.ts`](src/server.ts) also accepts extra hosts at runtime:
 
-```powershell
-gcloud run services update angular-ssr --set-env-vars ALLOWED_HOSTS=loja.exemplo.com
+```bash
+gcloud run services update angular-ssr --set-env-vars ALLOWED_HOSTS=shop.example.com
 ```
 
-### 2. Node 20 não roda Angular 22
+### 2. Node 20 cannot run Angular 22
 
-O `@angular/core@22` declara `engines: ^22.22.3 || ^24.15.0 || >=26.0.0`. O
-suporte ao Node 20 foi removido, e o `node:20-alpine` que aparece em muitos
-tutoriais falha no `npm ci`. Por isso o `Dockerfile` desta POC usa
-`node:22-alpine`.
-
-> **Os slides 13 e 18 do deck ainda mencionam "Node 20".** Vale corrigir para
-> 22 antes da apresentação — alguém na plateia vai tentar reproduzir.
+`@angular/core@22` declares `engines: ^22.22.3 || ^24.15.0 || >=26.0.0`. Node 20
+support was removed, so the `node:20-alpine` base image found in most SSR
+tutorials fails at `npm ci`. This project uses `node:22-alpine`.
 
 ---
 
-## Variáveis de ambiente
+## Environment variables
 
-| Variável | Padrão | Para quê |
-|---|---|---|
-| `PORT` | `8080` | Porta de escuta. No Cloud Run é **injetada** — nunca fixe no código. |
-| `ALLOWED_HOSTS` | vazio | Hosts extras liberados, separados por vírgula. Somado ao `angular.json`. |
-| `TRUST_PROXY_HEADERS` | `false` | Só ligue com um proxy confiável na frente (Cloud CDN, balanceador). |
-| `RENDER_DELAY_MS` | `0` | Atraso artificial no carregamento de dados, para encenar o estágio 3 do cold start. |
-| `K_SERVICE`, `K_REVISION` | — | Injetadas pelo Cloud Run. Alimentam a barra de telemetria. |
-| `GOOGLE_CLOUD_PROJECT` | — | Habilita a correlação de trace nos logs. |
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PORT` | `8080` | Listening port. Cloud Run **injects** this — never hardcode it. |
+| `ALLOWED_HOSTS` | empty | Extra allowed hostnames, comma separated. Merged with `angular.json`. |
+| `TRUST_PROXY_HEADERS` | `false` | Enable only with a trusted proxy in front (Cloud CDN, load balancer). |
+| `RENDER_DELAY_MS` | `0` | Artificial data-loading delay, to simulate a slow upstream API. |
+| `K_SERVICE`, `K_REVISION` | — | Injected by Cloud Run. Displayed in the telemetry bar. |
+| `GOOGLE_CLOUD_PROJECT` | — | Enables trace correlation in logs. |
 
 ---
 
-## Estrutura
+## How the telemetry works
 
-```
+The pattern is reusable for any server-only value the UI must keep after
+hydration, and it is worth reading even if you do not care about the rest:
+
+1. `server.ts` builds a context object per request and passes it as the second
+   argument to `angularApp.handle(req, context)`.
+2. Inside Angular, [`TelemetryStore`](src/app/core/telemetry.ts) reads it via
+   the `REQUEST_CONTEXT` injection token.
+3. Because `REQUEST_CONTEXT` is `null` in the browser, the store writes the
+   values into `TransferState`, which Angular serializes into the HTML.
+4. After hydration the client reads them back — no second request, no flicker.
+
+Skip step 3 and the bar goes blank the moment JavaScript takes over.
+
+---
+
+## Project layout
+
+```text
 ├── src/
-│   ├── server.ts                    ← telemetria, log JSON, /healthz, /api/instancia
-│   ├── index.html
+│   ├── server.ts                    Express + telemetry, logs, /healthz, /api/instance
 │   └── app/
-│       ├── app.routes.server.ts     ← Server | Prerender | Client (o coração da demo)
+│       ├── app.routes.server.ts     Server | Prerender | Client — start here
 │       ├── core/
-│       │   ├── telemetry.ts         ← REQUEST_CONTEXT → TransferState
+│       │   ├── telemetry.ts         REQUEST_CONTEXT -> TransferState bridge
 │       │   └── catalog.ts
-│       ├── shared/telemetry-bar/    ← a barra fixa do topo
-│       └── pages/{catalogo,produto,sobre,painel}/
-├── demo/                            ← os 5 scripts de palco
-├── lambda/                          ← a comparação do slide 14
-├── Dockerfile                       ← multi-stage, node:22-alpine
-├── .dockerignore                    ← barra os 17 MB do .pptx, entre outros
-└── cloudbuild.yaml                  ← pipeline de CI/CD
+│       ├── shared/telemetry-bar/    The sticky bar at the top
+│       └── pages/{catalog,product,about,dashboard}/
+├── demo/                            Measurement scripts
+├── lambda/                          The same app on AWS Lambda, for comparison
+├── Dockerfile                       Multi-stage, node:22-alpine
+└── cloudbuild.yaml                  CI/CD pipeline
 ```
 
-## Plano B
+---
 
-| Se falhar | Faça |
-|---|---|
-| Docker não sobe | `npm run build; npm run start:ssr` — a demo toda funciona sem container, menos o cold start |
-| Porta 8080 ocupada | Todos os scripts aceitam `-Porta 8090` |
-| Sem rede | Nada aqui precisa de internet depois do `npm install` |
-| `gcloud` ausente | `5-deploy.ps1` detecta e só imprime o comando |
-| Acentuação quebrada nos scripts | Os `.ps1` precisam ser UTF-8 **com BOM** para o Windows PowerShell 5.1 |
+## Comparison: the same app on AWS Lambda
+
+[`lambda/`](lambda/README.md) ports this application to AWS Lambda to make the
+adaptation cost concrete. Short version: Cloud Run runs the `server.ts` Angular
+already generated, while Lambda needs a separate entry point, an extra build
+configuration, an event adapter and an infrastructure template.
+
+That is a statement about **hosting Angular SSR specifically**, not about which
+platform is better in general. The folder's README covers when Lambda is the
+right call.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause |
+| --- | --- |
+| Every request returns `400` | Host not in `allowedHosts`. See the traps section. |
+| `npm ci` fails in Docker | Base image older than Node 22.22. |
+| Container starts but Cloud Run reports failure | Something is hardcoding a port instead of reading `PORT`. |
+| Telemetry bar goes blank after load | `TransferState` bridge missing — see the telemetry section. |
+| Garbled accents when running scripts | `.ps1` files must be UTF-8 **with BOM** for Windows PowerShell 5.1. |
+
+## License
+
+MIT.

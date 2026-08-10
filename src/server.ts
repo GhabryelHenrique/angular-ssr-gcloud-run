@@ -12,16 +12,17 @@ import type { ServerRenderContext } from './app/core/telemetry';
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
 /**
- * Hosts extras liberados em tempo de execução, separados por vírgula.
+ * Extra hostnames allowed at runtime, comma separated.
  *
- * O Angular 22 recusa com 400 qualquer requisição cujo `Host` não esteja
- * autorizado — é a proteção contra SSRF. A lista base fica no `angular.json`
- * (`security.allowedHosts`) e já cobre `localhost` e `*.run.app`.
+ * Angular 22 rejects any request whose `Host` header is not authorized — this
+ * is its SSRF protection. The base list lives in `angular.json` under
+ * `security.allowedHosts` and already covers `localhost` and `*.run.app`.
  *
- * O problema é que a lista do `angular.json` é decidida no BUILD, e o domínio
- * próprio muitas vezes só se conhece depois. Sem esta variável, apontar um
- * domínio para o serviço exigiria rebuildar a imagem. Com ela, é só um
- * `gcloud run services update --set-env-vars ALLOWED_HOSTS=loja.exemplo.com`.
+ * The catch is that the `angular.json` list is fixed at BUILD time, while a
+ * custom domain is often only known later. Without this variable, pointing a
+ * domain at the service would require rebuilding the image. With it, a single
+ * `gcloud run services update --set-env-vars ALLOWED_HOSTS=shop.example.com`
+ * is enough.
  */
 const allowedHosts = (process.env['ALLOWED_HOSTS'] ?? '')
   .split(',')
@@ -30,49 +31,51 @@ const allowedHosts = (process.env['ALLOWED_HOSTS'] ?? '')
 
 const app = express();
 const angularApp = new AngularNodeAppEngine({
-  // Somado à lista do angular.json, não substitui.
+  // Merged with the angular.json list rather than replacing it.
   allowedHosts,
   /**
-   * Só confie em X-Forwarded-* se houver de fato um proxy confiável na frente
-   * (Cloud CDN, balanceador). O Cloud Run puro preserva o `Host`, então o
-   * padrão aqui é `false` — ligar sem proxy deixaria o cliente forjar o host.
+   * Only trust X-Forwarded-* when a trusted proxy actually sits in front
+   * (Cloud CDN, a load balancer). Plain Cloud Run preserves the original
+   * `Host`, so the default here is `false` — enabling it without a proxy
+   * would let clients forge the host.
    */
   trustProxyHeaders: process.env['TRUST_PROXY_HEADERS'] === 'true',
 });
 
 // ---------------------------------------------------------------------------
-// Identidade e contadores do processo
+// Process identity and counters
 //
-// Tudo aqui vive na memória de UMA instância. Quando o Cloud Run recicla o
-// container, esse estado morre junto — e é exatamente isso que a demo mostra:
-// `instanceId` mudando é a prova visual de que uma instância nova subiu.
+// Everything here lives in the memory of ONE instance. When Cloud Run recycles
+// the container this state dies with it — which is the point: watching
+// `instanceId` change is the visible proof that a new instance started.
 // ---------------------------------------------------------------------------
 
-/** Muda a cada processo novo. É o "impressão digital" da instância no telão. */
+/** Unique per process. Acts as the instance fingerprint in the UI. */
 const instanceId = randomUUID().slice(0, 8);
 
-/** `Date.now()` no instante em que o módulo foi avaliado — estágio 2 do slide 22. */
+/** `Date.now()` when this module was evaluated. */
 const bootTime = Date.now();
 
 const K_SERVICE = process.env['K_SERVICE'] ?? '';
 const K_REVISION = process.env['K_REVISION'] ?? '';
 
-/**
- * A variável PORT (slide 13).
- *
- * O Cloud Run injeta PORT no ambiente e espera que o container escute nela.
- * Fixar a porta no código é o erro que faz o deploy falhar com "the container
- * failed to start and listen on the port". O padrão 8080 aqui é só para rodar
- * na sua máquina — em produção quem manda é o ambiente.
- */
-const port = Number(process.env['PORT'] ?? 8080);
-
-/** `K_SERVICE` só existe dentro do Cloud Run — serve de detector de ambiente. */
+/** `K_SERVICE` only exists inside Cloud Run, so it doubles as an environment probe. */
 const platform: 'cloud-run' | 'local' = K_SERVICE ? 'cloud-run' : 'local';
 
 /**
- * Atraso artificial na resolução dos dados, para encenar o estágio 3 do slide 22
- * ("chamada externa lenta aparece aqui"). Padrão 0 — ligue com RENDER_DELAY_MS=800.
+ * The port.
+ *
+ * Cloud Run injects `PORT` into the environment and expects the container to
+ * listen on it. Hardcoding a port is the mistake behind the classic deploy
+ * failure "the container failed to start and listen on the port". The 8080
+ * default is only for local runs — in production the environment decides.
+ */
+const port = Number(process.env['PORT'] ?? 8080);
+
+/**
+ * Artificial delay applied while resolving page data, used to simulate a slow
+ * upstream API. Defaults to 0; set `RENDER_DELAY_MS=800` to see how a slow
+ * backend inflates render time.
  */
 const renderDelayMs = Number(process.env['RENDER_DELAY_MS'] ?? 0) || 0;
 
@@ -81,18 +84,18 @@ let inFlight = 0;
 let peakInFlight = 0;
 
 // ---------------------------------------------------------------------------
-// Log estruturado (slide 26)
+// Structured logging
 // ---------------------------------------------------------------------------
 
 const GCP_PROJECT = process.env['GOOGLE_CLOUD_PROJECT'] ?? '';
 
 /**
- * Uma linha JSON por evento, no formato que o Cloud Logging entende nativamente.
+ * Emits one JSON line per event, in the shape Cloud Logging understands natively.
  *
- * O Cloud Run lê o stdout do container: se a linha for JSON, os campos viram
- * campos indexados e `severity` vira o nível de verdade — dá para alertar em
- * `severity=ERROR` sem parsear texto. Se for texto solto, tudo vira uma string
- * só e você depura no escuro.
+ * Cloud Run reads the container's stdout: if a line is valid JSON, its fields
+ * become indexed fields and `severity` becomes the real log level — so you can
+ * alert on `severity=ERROR` without parsing text. Plain text collapses into a
+ * single opaque string and you end up debugging blind.
  */
 function log(
   severity: 'INFO' | 'WARNING' | 'ERROR',
@@ -107,8 +110,8 @@ function log(
     ...extra,
   };
 
-  // Correlaciona a linha de log com o trace distribuído do Cloud Trace, o que
-  // permite pular do log para a requisição inteira no console do GCP.
+  // Correlates this log line with the distributed trace, which makes it
+  // possible to jump from a log entry to the full request in Cloud Trace.
   const traceId = traceHeader?.split('/')[0];
   if (traceId && GCP_PROJECT) {
     entry['logging.googleapis.com/trace'] = `projects/${GCP_PROJECT}/traces/${traceId}`;
@@ -118,24 +121,24 @@ function log(
 }
 
 // ---------------------------------------------------------------------------
-// Endpoints de infraestrutura
+// Infrastructure endpoints
 // ---------------------------------------------------------------------------
 
 /**
- * Health check. O script `3-coldstart.ps1` cronometra quanto tempo esta rota
- * demora a responder num container recém-criado: é o tempo de provisionar a
- * instância mais o de subir o Node (estágios 1 e 2 do slide 22).
+ * Health check. The cold start script times how long a freshly created
+ * container takes to answer this route: that is the cost of provisioning the
+ * instance plus booting Node, before any rendering happens.
  */
 app.get('/healthz', (_req, res) => {
   res.json({ status: 'ok', instanceId, uptimeMs: Date.now() - bootTime });
 });
 
 /**
- * Telemetria em JSON, consumida pela rota /painel e pelo script de concorrência.
- * É por aqui que se prova que 50 requisições paralelas foram atendidas por uma
- * instância só (slide 13).
+ * Instance telemetry as JSON, consumed by the /dashboard route and by the
+ * concurrency script. This is how you prove that N parallel requests were all
+ * served by a single instance.
  */
-app.get('/api/instancia', (_req, res) => {
+app.get('/api/instance', (_req, res) => {
   res.json({
     instanceId,
     requestNumber: requestCount,
@@ -150,11 +153,11 @@ app.get('/api/instancia', (_req, res) => {
 });
 
 /**
- * Arquivos estáticos do /browser.
+ * Static assets from /browser.
  *
- * `maxAge: '1y'` é seguro porque o build gera nomes com hash: quando o conteúdo
- * muda, o nome muda. É o cache do slide 23 — a maioria dos acessos nem chega
- * a acordar o renderizador.
+ * A one year `maxAge` is safe because the build emits hashed filenames: when
+ * content changes, the name changes. Aggressive caching here means most
+ * requests never wake the renderer at all.
  */
 app.use(
   express.static(browserDistFolder, {
@@ -165,20 +168,20 @@ app.use(
 );
 
 /**
- * Render do Angular, instrumentado.
+ * The Angular renderer, instrumented.
  */
 app.use((req, res, next) => {
   const handleStartMs = Date.now();
   const requestNumber = ++requestCount;
 
-  // A primeira requisição de um processo é, por definição, a que pagou o
-  // cold start: ela esperou provisionar a instância e subir o Node.
+  // The first request served by a process is, by definition, the one that paid
+  // for the cold start: it waited for the instance and for Node to boot.
   const coldStart = requestNumber === 1;
 
   inFlight++;
   peakInFlight = Math.max(peakInFlight, inFlight);
 
-  const contexto: ServerRenderContext = {
+  const context: ServerRenderContext = {
     instanceId,
     requestNumber,
     coldStart,
@@ -196,8 +199,8 @@ app.use((req, res, next) => {
   const traceHeader = req.header('x-cloud-trace-context');
 
   angularApp
-    // O segundo argumento chega no Angular pelo token REQUEST_CONTEXT.
-    .handle(req, contexto)
+    // The second argument reaches Angular through the REQUEST_CONTEXT token.
+    .handle(req, context)
     .then((response) => {
       if (!response) {
         return next();
@@ -205,8 +208,8 @@ app.use((req, res, next) => {
 
       const renderMs = Date.now() - handleStartMs;
 
-      // Expõe o tempo real de render no DevTools e para o curl. É a fonte
-      // precisa que os scripts da demo leem.
+      // Exposes real render time to DevTools and to curl. This is the precise
+      // source the measurement scripts read.
       res.setHeader('Server-Timing', `render;dur=${renderMs}`);
       res.setHeader('X-Instance-Id', instanceId);
       res.setHeader('X-Cold-Start', String(coldStart));
@@ -227,18 +230,18 @@ app.use((req, res, next) => {
 
       return writeResponseToNodeResponse(response, res);
     })
-    .catch((erro: unknown) => {
+    .catch((error: unknown) => {
       log(
         'ERROR',
-        `Falha ao renderizar ${req.url}`,
+        `Failed to render ${req.url}`,
         {
           path: req.url,
-          erro: erro instanceof Error ? erro.message : String(erro),
-          stack: erro instanceof Error ? erro.stack : undefined,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
         },
         traceHeader,
       );
-      next(erro);
+      next(error);
     })
     .finally(() => {
       inFlight--;
@@ -251,7 +254,7 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
       throw error;
     }
 
-    log('INFO', 'Servidor pronto para receber requisições', {
+    log('INFO', 'Server ready to accept requests', {
       port,
       platform,
       service: K_SERVICE,
@@ -264,6 +267,6 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
 }
 
 /**
- * Handler usado pelo Angular CLI (dev-server e build).
+ * Request handler used by the Angular CLI during dev-server and build.
  */
 export const reqHandler = createNodeRequestHandler(app);

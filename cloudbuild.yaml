@@ -1,13 +1,12 @@
 # =============================================================================
-# Pipeline de CI/CD — push na main -> build -> Artifact Registry -> Cloud Run
-# (slide 21)
+# CI/CD pipeline — push to main -> build -> Artifact Registry -> Cloud Run
 #
-# Rodar manualmente:
+# Run manually:
 #   gcloud builds submit --config cloudbuild.yaml
 #
-# Ligar no push da branch:
+# Wire it to pushes on a branch:
 #   gcloud builds triggers create github \
-#     --repo-name=POC-CLOUD-RUN --repo-owner=GhabryelHenrique \
+#     --repo-name=angular-ssr-gcloud-run --repo-owner=<your-user> \
 #     --branch-pattern='^main$' --build-config=cloudbuild.yaml
 # =============================================================================
 
@@ -18,11 +17,11 @@ substitutions:
 
 steps:
   # ---------------------------------------------------------------------------
-  # 1. Build da imagem, reaproveitando a última como cache de camadas.
+  # 1. Build the image, reusing the previous one as a layer cache.
   #
-  # O `|| true` no pull é proposital: no primeiro build a tag :latest ainda não
-  # existe e o pull falha. Sem isso, a pipeline quebraria justamente na
-  # primeira execução.
+  # The `|| true` on the pull is deliberate: on the very first build the
+  # :latest tag does not exist yet and the pull fails. Without it, the pipeline
+  # would break on its first run.
   # ---------------------------------------------------------------------------
   - id: build
     name: gcr.io/cloud-builders/docker
@@ -39,8 +38,8 @@ steps:
           .
 
   # ---------------------------------------------------------------------------
-  # 2. Push das duas tags: :SHORT_SHA dá rastreabilidade (toda imagem aponta
-  #    para um commit) e :latest serve de cache para o próximo build.
+  # 2. Push both tags: :SHORT_SHA gives traceability (every image maps to a
+  #    commit) and :latest serves as the cache source for the next build.
   # ---------------------------------------------------------------------------
   - id: push
     name: gcr.io/cloud-builders/docker
@@ -53,8 +52,9 @@ steps:
         docker push "$$IMAGE:latest"
 
   # ---------------------------------------------------------------------------
-  # 3. Deploy. Cada deploy cria uma REVISÃO imutável — dá para dividir tráfego
-  #    90/10 e fazer rollback num clique, sem rebuildar nada.
+  # 3. Deploy. Every deploy creates an immutable revision, which is what makes
+  #    90/10 traffic splitting and one-click rollback possible without
+  #    rebuilding anything.
   # ---------------------------------------------------------------------------
   - id: deploy
     name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -69,16 +69,16 @@ steps:
       - --allow-unauthenticated
       - --cpu=1
       - --memory=512Mi
-      # Concorrência alta = menos instâncias = menos custo. Renderizar HTML é
-      # barato; o gargalo raramente é CPU.
+      # High concurrency = fewer instances = lower cost. Rendering HTML is
+      # cheap, and CPU is rarely the bottleneck for a typical page.
       - --concurrency=80
-      # Uma instância sempre quente tira o cold start do caminho do usuário.
+      # One always-warm instance keeps cold starts off the user's critical path.
       - --min-instances=1
       - --max-instances=20
-      # CPU extra durante a inicialização, sem pagar CPU cheia o tempo todo.
+      # Extra CPU during startup only, without paying for it continuously.
       - --cpu-boost
 
-# Imagens registradas no resultado do build, para rastreabilidade.
+# Images recorded in the build result, for traceability.
 images:
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
   - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:latest

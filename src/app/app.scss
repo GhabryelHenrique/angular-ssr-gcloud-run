@@ -1,4 +1,4 @@
-.navegacao {
+.nav {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -8,18 +8,18 @@
   border-bottom: 1px solid #2f4a68;
 }
 
-.marca {
-  color: var(--branco);
+.brand {
+  color: var(--white);
   font-size: 1.25rem;
   font-weight: 700;
 }
 
-.marca__fraca {
-  color: var(--cinza);
+.brand__muted {
+  color: var(--grey);
   font-weight: 400;
 }
 
-.abas {
+.tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -34,41 +34,41 @@
     padding: 0.5rem 1rem;
     border: 1px solid #2f4a68;
     border-radius: 999px;
-    color: var(--cinza);
-    font-family: var(--fonte-mono);
+    color: var(--grey);
+    font-family: var(--font-mono);
     font-size: 1rem;
     text-decoration: none;
 
     &:hover {
-      border-color: var(--cinza);
+      border-color: var(--grey);
     }
 
-    &.ativo {
-      border-color: var(--verde);
+    &.active {
+      border-color: var(--green);
       background: rgba(92, 219, 109, 0.1);
-      color: var(--branco);
+      color: var(--white);
     }
   }
 }
 
-.modo {
+.mode {
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-.modo--server {
-  color: var(--verde);
+.mode--server {
+  color: var(--green);
 }
 
-.modo--prerender {
-  color: var(--azul);
+.mode--prerender {
+  color: var(--blue);
 }
 
-.modo--client {
-  color: var(--vermelho);
+.mode--client {
+  color: var(--red);
 }
 
-.conteudo {
+.content {
   padding: 2.5rem 1.5rem 4rem;
 }

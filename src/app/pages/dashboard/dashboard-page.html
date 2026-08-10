@@ -1,0 +1,34 @@
+<article class="prose">
+  <h1>Instance dashboard</h1>
+
+  <p class="callout">
+    <strong>This route is client-rendered.</strong> Open <code>view-source:</code> right now:
+    none of the numbers below are in it. The server returned an empty
+    <code>&lt;app-root&gt;</code>, the browser downloaded the bundle, executed it, and only
+    then asked for data — two round trips before the first useful pixel.
+  </p>
+
+  @if (data(); as d) {
+    <dl class="metrics">
+      <div><dt>instance</dt><dd>{{ d.instanceId }}</dd></div>
+      <div><dt>requests served</dt><dd>{{ d.requestNumber }}</dd></div>
+      <div><dt>uptime</dt><dd>{{ (d.uptimeMs / 1000).toFixed(1) }}s</dd></div>
+      <div><dt>in flight now</dt><dd>{{ d.inFlight }}</dd></div>
+      <div><dt>peak concurrency</dt><dd>{{ d.peakInFlight }}</dd></div>
+      <div><dt>PORT</dt><dd>{{ d.port }}</dd></div>
+      <div><dt>platform</dt><dd>{{ d.platform }}</dd></div>
+      @if (d.revision) {
+        <div><dt>K_REVISION</dt><dd>{{ d.revision }}</dd></div>
+      }
+    </dl>
+
+    <p class="footer">
+      Fetched in {{ fetchMs() }}ms, <em>after</em> JavaScript took over.
+      <button type="button" (click)="load()">refresh</button>
+    </p>
+  } @else if (error()) {
+    <p class="error">Could not reach <code>/api/instance</code>: {{ error() }}</p>
+  } @else {
+    <p class="loading">Loading… (this wait is the cost of client-side rendering)</p>
+  }
+</article>

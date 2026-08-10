@@ -1,0 +1,53 @@
+<article class="prose">
+  <h1>About this demo</h1>
+
+  <p class="callout">
+    <strong>This route is prerendered.</strong> Its HTML was produced once, during
+    <code>ng build</code>, and shipped as a static file in <code>dist/browser</code>. In
+    production it is served straight off disk — the renderer never wakes up.
+  </p>
+
+  <p class="stamp">
+    Frozen at build time: <code>{{ generatedAtBuildTime }}</code>
+  </p>
+
+  <p>
+    Reload as many times as you like: that timestamp <strong>never changes</strong>. It belongs
+    to the build, not to your visit. That is precisely the limit of prerendering — and the
+    reason the catalog, with its live price and stock, cannot use it.
+  </p>
+
+  <h2>The three render modes, side by side</h2>
+
+  <table class="comparison">
+    <thead>
+      <tr>
+        <th>Route</th>
+        <th>Mode</th>
+        <th>When the HTML is created</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>/</code> and <code>/product/:id</code></td>
+        <td class="mode mode--server">Server</td>
+        <td>On every request</td>
+      </tr>
+      <tr>
+        <td><code>/about</code></td>
+        <td class="mode mode--prerender">Prerender</td>
+        <td>At <code>ng build</code> time</td>
+      </tr>
+      <tr>
+        <td><code>/dashboard</code></td>
+        <td class="mode mode--client">Client</td>
+        <td>Never — only in the browser</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>
+    All three coexist in one application, configured in a single file:
+    <code>app.routes.server.ts</code>. The choice is made per route, not per project.
+  </p>
+</article>

@@ -1,6 +1,6 @@
-.texto {
+.prose {
   max-width: 75ch;
-  color: var(--cinza);
+  color: var(--grey);
   font-size: 1.08rem;
   line-height: 1.7;
 }
@@ -8,43 +8,43 @@
 h1 {
   margin: 0 0 1.2rem;
   font-size: 2.4rem;
-  color: var(--branco);
+  color: var(--white);
 }
 
 h2 {
   margin: 2.5rem 0 1rem;
   font-size: 1.5rem;
-  color: var(--branco);
+  color: var(--white);
 }
 
 code {
-  color: var(--verde);
-  font-family: var(--fonte-mono);
+  color: var(--green);
+  font-family: var(--font-mono);
   font-size: 0.95em;
 }
 
 strong {
-  color: var(--branco);
+  color: var(--white);
 }
 
-.marcador {
+.callout {
   padding: 1rem 1.2rem;
-  border-left: 3px solid var(--azul);
+  border-left: 3px solid var(--blue);
   background: rgba(66, 133, 244, 0.08);
 }
 
-.carimbo {
+.stamp {
   padding: 0.9rem 1.2rem;
-  border: 1px dashed var(--amarelo);
+  border: 1px dashed var(--yellow);
   border-radius: 8px;
-  font-family: var(--fonte-mono);
+  font-family: var(--font-mono);
 
   code {
-    color: var(--amarelo);
+    color: var(--yellow);
   }
 }
 
-.comparativo {
+.comparison {
   width: 100%;
   border-collapse: collapse;
   font-size: 1rem;
@@ -57,27 +57,27 @@ strong {
   }
 
   th {
-    color: var(--cinza);
-    font-family: var(--fonte-mono);
+    color: var(--grey);
+    font-family: var(--font-mono);
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
 }
 
-.modo {
-  font-family: var(--fonte-mono);
+.mode {
+  font-family: var(--font-mono);
   font-weight: 700;
 }
 
-.modo--server {
-  color: var(--verde);
+.mode--server {
+  color: var(--green);
 }
 
-.modo--prerender {
-  color: var(--azul);
+.mode--prerender {
+  color: var(--blue);
 }
 
-.modo--client {
-  color: var(--vermelho);
+.mode--client {
+  color: var(--red);
 }

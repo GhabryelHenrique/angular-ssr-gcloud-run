@@ -2,11 +2,11 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Description: >
-  Angular SSR na AWS Lambda — o equivalente ao "gcloud run deploy" de uma linha.
-  Compare o tamanho deste arquivo com o comando do slide 20.
+  Angular SSR on AWS Lambda — the equivalent of a one-line "gcloud run deploy".
+  Compare the size of this file with that single command.
 
 Parameters:
-  NomeFuncao:
+  FunctionName:
     Type: String
     Default: angular-ssr
 
@@ -16,35 +16,35 @@ Globals:
     MemorySize: 1024
 
 Resources:
-  FuncaoSsr:
+  SsrFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: !Ref NomeFuncao
+      FunctionName: !Ref FunctionName
       PackageType: Image
       Architectures:
         - arm64
       Environment:
         Variables:
           NODE_ENV: production
-          # Mesma proteção anti-SSRF do Cloud Run: sem o host correto aqui,
-          # toda requisição volta 400.
+          # The same SSRF protection as Cloud Run: without the correct host
+          # here, every request comes back 400.
           ALLOWED_HOSTS: !Sub '*.lambda-url.${AWS::Region}.on.aws'
 
       FunctionUrlConfig:
         AuthType: NONE
-        # Streaming de HTML só existe via Function URL. Atrás de API Gateway,
-        # a resposta é sempre bufferizada e limitada a 6 MB.
+        # HTML streaming only exists through a Function URL. Behind API
+        # Gateway the response is always buffered and capped at 6 MB.
         InvokeMode: RESPONSE_STREAM
 
-      # Concorrência provisionada só pode apontar para um alias publicado —
-      # daí o AutoPublishAlias. Sem ele, o deploy falha na validação.
+      # Provisioned concurrency can only target a published alias, hence
+      # AutoPublishAlias. Without it, the deploy fails validation.
       AutoPublishAlias: live
 
-      # Mitigação de cold start equivalente ao --min-instances do Cloud Run.
-      # Diferença importante: aqui a concorrência provisionada é por execução
-      # simultânea. O Lambda atende UMA requisição por execução, então 80
-      # requisições paralelas exigem 80 ambientes — no Cloud Run, uma
-      # instância com --concurrency 80 dá conta.
+      # Cold start mitigation, equivalent to Cloud Run's --min-instances.
+      # Important difference: this is provisioned per concurrent execution.
+      # Lambda serves ONE request per execution environment, so 80 parallel
+      # requests need 80 environments — where a single Cloud Run instance with
+      # --concurrency 80 would do.
       ProvisionedConcurrencyConfig:
         ProvisionedConcurrentExecutions: 1
 
@@ -54,12 +54,12 @@ Resources:
       DockerTag: latest
 
 Outputs:
-  UrlFuncao:
-    Description: URL pública da função
-    Value: !GetAtt FuncaoSsrUrl.FunctionUrl
+  FunctionUrl:
+    Description: Public URL of the function
+    Value: !GetAtt SsrFunctionUrl.FunctionUrl
 
-  Observacao:
-    Description: O que este template precisou e o Cloud Run não
+  WhatThisNeeded:
+    Description: What this template required and Cloud Run did not
     Value: >
-      Entry point separado, configuração de build extra, adaptador de evento,
-      este template e uma Function URL com InvokeMode explícito.
+      A separate entry point, an extra build configuration, an event adapter,
+      this template, and a Function URL with an explicit invoke mode.

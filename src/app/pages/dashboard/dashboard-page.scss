@@ -1,6 +1,6 @@
-.texto {
+.prose {
   max-width: 75ch;
-  color: var(--cinza);
+  color: var(--grey);
   font-size: 1.08rem;
   line-height: 1.7;
 }
@@ -8,26 +8,26 @@
 h1 {
   margin: 0 0 1.2rem;
   font-size: 2.4rem;
-  color: var(--branco);
+  color: var(--white);
 }
 
 code {
-  color: var(--verde);
-  font-family: var(--fonte-mono);
+  color: var(--green);
+  font-family: var(--font-mono);
   font-size: 0.95em;
 }
 
 strong {
-  color: var(--branco);
+  color: var(--white);
 }
 
-.marcador {
+.callout {
   padding: 1rem 1.2rem;
-  border-left: 3px solid var(--vermelho);
+  border-left: 3px solid var(--red);
   background: rgba(234, 67, 53, 0.08);
 }
 
-.metricas {
+.metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1px;
@@ -39,12 +39,12 @@ strong {
 
   > div {
     padding: 1rem 1.2rem;
-    background: var(--navy-cartao);
+    background: var(--navy-card);
   }
 
   dt {
-    color: var(--cinza);
-    font-family: var(--fonte-mono);
+    color: var(--grey);
+    font-family: var(--font-mono);
     font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -52,26 +52,26 @@ strong {
 
   dd {
     margin: 0.35rem 0 0;
-    color: var(--verde);
-    font-family: var(--fonte-mono);
+    color: var(--green);
+    font-family: var(--font-mono);
     font-size: 1.4rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 }
 
-.rodape {
-  font-family: var(--fonte-mono);
+.footer {
+  font-family: var(--font-mono);
   font-size: 0.95rem;
 }
 
 button {
   margin-left: 0.6rem;
   padding: 0.35rem 0.9rem;
-  border: 1px solid var(--verde);
+  border: 1px solid var(--green);
   border-radius: 999px;
   background: transparent;
-  color: var(--verde);
+  color: var(--green);
   font-family: inherit;
   font-size: 0.9rem;
   cursor: pointer;
@@ -81,12 +81,12 @@ button {
   }
 }
 
-.carregando {
-  color: var(--amarelo);
-  font-family: var(--fonte-mono);
+.loading {
+  color: var(--yellow);
+  font-family: var(--font-mono);
 }
 
-.erro {
-  color: var(--vermelho);
-  font-family: var(--fonte-mono);
+.error {
+  color: var(--red);
+  font-family: var(--font-mono);
 }

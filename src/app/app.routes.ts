@@ -3,23 +3,23 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   {
     path: '',
-    title: 'Catálogo · SSR no Cloud Run',
-    loadComponent: () => import('./pages/catalogo/catalogo').then((m) => m.Catalogo),
+    title: 'Catalog · Angular SSR on Cloud Run',
+    loadComponent: () => import('./pages/catalog/catalog-page').then((m) => m.CatalogPage),
   },
   {
-    path: 'produto/:id',
-    title: 'Produto · SSR no Cloud Run',
-    loadComponent: () => import('./pages/produto/produto').then((m) => m.Produto),
+    path: 'product/:id',
+    title: 'Product · Angular SSR on Cloud Run',
+    loadComponent: () => import('./pages/product/product-page').then((m) => m.ProductPage),
   },
   {
-    path: 'sobre',
-    title: 'Sobre · SSR no Cloud Run',
-    loadComponent: () => import('./pages/sobre/sobre').then((m) => m.Sobre),
+    path: 'about',
+    title: 'About · Angular SSR on Cloud Run',
+    loadComponent: () => import('./pages/about/about-page').then((m) => m.AboutPage),
   },
   {
-    path: 'painel',
-    title: 'Painel · SSR no Cloud Run',
-    loadComponent: () => import('./pages/painel/painel').then((m) => m.Painel),
+    path: 'dashboard',
+    title: 'Dashboard · Angular SSR on Cloud Run',
+    loadComponent: () => import('./pages/dashboard/dashboard-page').then((m) => m.DashboardPage),
   },
   { path: '**', redirectTo: '' },
 ];

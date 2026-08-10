@@ -9,56 +9,60 @@ import {
 } from '@angular/core';
 
 /**
- * Dados que o servidor injeta em cada render.
+ * Per-request data that the server injects into every render.
  *
- * O `server.ts` monta este objeto por requisição e passa para
- * `angularApp.handle(req, contexto)`. Dentro do Angular ele chega pelo
- * token `REQUEST_CONTEXT`.
+ * `server.ts` builds this object for each request and passes it to
+ * `angularApp.handle(req, context)`. Inside Angular it arrives through the
+ * `REQUEST_CONTEXT` injection token.
  */
 export interface ServerRenderContext {
-  /** Identidade do processo Node. Muda quando o container é recriado. */
+  /** Identifies the Node process. Changes whenever a new container starts. */
   instanceId: string;
-  /** Quantas requisições este processo já serviu (esta inclusa). */
+  /** How many requests this process has served, including the current one. */
   requestNumber: number;
-  /** `true` apenas na primeira requisição de um processo novo — o cold start. */
+  /** True only on the very first request of a fresh process — the cold start. */
   coldStart: boolean;
-  /** Há quanto tempo o processo está de pé. */
+  /** How long the process has been running. */
   uptimeMs: number;
-  /** Requisições sendo processadas neste instante por esta instância. */
+  /** Requests being processed by this instance at this exact moment. */
   inFlight: number;
-  /** Pico de concorrência simultânea observado por esta instância. */
+  /** Highest concurrency this instance has observed since it started. */
   peakInFlight: number;
-  /** Porta em que o servidor escuta — no Cloud Run vem da variável PORT. */
+  /** Port the server listens on. On Cloud Run this comes from `PORT`. */
   port: string;
-  /** `K_SERVICE` no Cloud Run; vazio localmente. */
+  /** `K_SERVICE` on Cloud Run; empty when running locally. */
   service: string;
-  /** `K_REVISION` no Cloud Run; vazio localmente. */
+  /** `K_REVISION` on Cloud Run; empty when running locally. */
   revision: string;
-  /** Onde o processo está rodando, deduzido do ambiente. */
+  /** Where the process is running, inferred from the environment. */
   platform: 'cloud-run' | 'local';
-  /** Atraso artificial de dados, via RENDER_DELAY_MS (encena o slide 22). */
+  /** Artificial data delay from `RENDER_DELAY_MS`, used to simulate slow APIs. */
   renderDelayMs: number;
-  /** `Date.now()` no início do handle — base para medir o tempo de render. */
+  /** `Date.now()` when request handling began — the baseline for render timing. */
   handleStartMs: number;
 }
 
-/** Estado que a barra de telemetria mostra, já normalizado para a tela. */
+/** Telemetry shaped for display, with the derived values the UI needs. */
 export interface TelemetryView extends ServerRenderContext {
-  /** ISO do instante em que o servidor renderizou. */
+  /** ISO timestamp of the moment the server rendered this page. */
   renderedAt: string;
-  /** ms entre o início do handle e a montagem deste serviço. */
+  /** Milliseconds between the start of request handling and this service booting. */
   renderMs: number;
 }
 
 const TELEMETRY_KEY = makeStateKey<TelemetryView>('ssr-telemetry');
 
 /**
- * Faz a telemetria do servidor sobreviver à hidratação.
+ * Carries server-side telemetry across hydration.
  *
- * `REQUEST_CONTEXT` só existe durante o SSR — no navegador ele é `null`. Sem
- * cuidado, a barra apagaria assim que o JavaScript assumisse. A ponte é o
- * `TransferState`: o servidor grava, o Angular serializa junto do HTML e o
- * cliente lê de volta sem precisar de uma segunda requisição.
+ * `REQUEST_CONTEXT` only exists during SSR — in the browser it is `null`.
+ * Without care, the telemetry bar would go blank the moment JavaScript took
+ * over. `TransferState` is the bridge: the server writes the values, Angular
+ * serializes them alongside the HTML, and the client reads them back without
+ * paying for a second round trip.
+ *
+ * This is the standard pattern for any server-only value that the UI must keep
+ * showing after hydration.
  */
 @Injectable({ providedIn: 'root' })
 export class TelemetryStore {
@@ -69,21 +73,21 @@ export class TelemetryStore {
 
   private readonly state = signal<TelemetryView | null>(this.resolve());
 
-  /** Telemetria do render atual, ou `null` numa rota puramente client-side. */
+  /** Telemetry for the current render, or `null` on a client-only route. */
   readonly telemetry = this.state.asReadonly();
 
-  /** `true` depois que o bundle assumiu no navegador. */
+  /** Becomes true once the bundle has taken over in the browser. */
   readonly hydrated = signal(false);
 
   readonly renderOrigin = computed(() => {
     if (!this.state()) {
-      return 'navegador (CSR)';
+      return 'browser (CSR)';
     }
-    return this.hydrated() ? 'servidor · hidratado' : 'servidor (SSR)';
+    return this.hydrated() ? 'server · hydrated' : 'server (SSR)';
   });
 
   private resolve(): TelemetryView | null {
-    // No servidor: lê o contexto da requisição e o deixa gravado para o cliente.
+    // On the server: read the request context and stash it for the client.
     if (this.requestContext) {
       const view: TelemetryView = {
         ...this.requestContext,
@@ -95,7 +99,7 @@ export class TelemetryStore {
       return view;
     }
 
-    // No cliente: recupera o que o servidor serializou no HTML.
+    // In the browser: recover whatever the server serialized into the HTML.
     return this.transferState.get(TELEMETRY_KEY, null);
   }
 

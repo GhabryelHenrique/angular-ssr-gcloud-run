@@ -1,8 +1,8 @@
-.voltar {
+.back {
   display: inline-block;
   margin-bottom: 1.5rem;
-  color: var(--verde);
-  font-family: var(--fonte-mono);
+  color: var(--green);
+  font-family: var(--font-mono);
   text-decoration: none;
 
   &:hover {
@@ -10,17 +10,17 @@
   }
 }
 
-.ficha {
+.detail {
   max-width: 60ch;
   padding: 2rem;
   border: 1px solid #2f4a68;
   border-radius: 10px;
-  background: var(--navy-cartao);
+  background: var(--navy-card);
 }
 
-.ficha__categoria {
-  color: var(--cinza);
-  font-family: var(--fonte-mono);
+.detail__category {
+  color: var(--grey);
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -29,17 +29,17 @@
 h1 {
   margin: 0.4rem 0 0.8rem;
   font-size: 2.1rem;
-  color: var(--branco);
+  color: var(--white);
 }
 
-.ficha__descricao {
+.detail__description {
   margin: 0 0 1.5rem;
-  color: var(--cinza);
+  color: var(--grey);
   font-size: 1.1rem;
   line-height: 1.6;
 }
 
-.ficha__compra {
+.detail__purchase {
   display: flex;
   align-items: baseline;
   gap: 1.2rem;
@@ -47,34 +47,34 @@ h1 {
   border-bottom: 1px solid #2f4a68;
 }
 
-.ficha__preco {
-  color: var(--verde);
-  font-family: var(--fonte-mono);
+.detail__price {
+  color: var(--green);
+  font-family: var(--font-mono);
   font-size: 2rem;
   font-weight: 700;
 }
 
-.estoque {
-  color: var(--cinza);
-  font-family: var(--fonte-mono);
+.stock {
+  color: var(--grey);
+  font-family: var(--font-mono);
 }
 
-.estoque--zero {
-  color: var(--vermelho);
+.stock--out {
+  color: var(--red);
 }
 
-.nota {
+.note {
   margin: 1.5rem 0 0;
-  color: var(--cinza);
+  color: var(--grey);
   font-size: 1rem;
   line-height: 1.6;
 
   strong {
-    color: var(--verde);
+    color: var(--green);
   }
 
   code {
-    color: var(--amarelo);
-    font-family: var(--fonte-mono);
+    color: var(--yellow);
+    font-family: var(--font-mono);
   }
 }

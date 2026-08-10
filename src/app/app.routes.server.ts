@@ -1,34 +1,34 @@
 import { RenderMode, ServerRoute } from '@angular/ssr';
 
 /**
- * Renderização híbrida — a escolha é por rota, não por projeto (slides 8 e 15).
+ * Hybrid rendering — the render strategy is chosen per route, not per project.
  *
- * Este arquivo é o argumento inteiro do capítulo 1 em vinte linhas: a mesma
- * aplicação serve HTML gerado sob demanda, HTML congelado no build e HTML
- * nenhum, dependendo do que cada rota precisa.
+ * This file is the whole argument in twenty lines: one application serves HTML
+ * generated on demand, HTML frozen at build time, and no HTML at all,
+ * depending on what each route actually needs.
  */
 export const serverRoutes: ServerRoute[] = [
-  // Preço e estoque mudam a toda hora: precisa renderizar a cada requisição.
+  // Price and stock change constantly, so these must render per request.
   {
     path: '',
     renderMode: RenderMode.Server,
   },
   {
-    path: 'produto/:id',
+    path: 'product/:id',
     renderMode: RenderMode.Server,
   },
 
-  // Conteúdo igual para todo mundo, muda só no deploy: o build resolve.
-  // É o "talvez você não precise de SSR nenhum" do slide 15.
+  // Same content for everyone, changes only on deploy: the build can handle it.
+  // If your whole site looks like this, you may not need SSR at all.
   {
-    path: 'sobre',
+    path: 'about',
     renderMode: RenderMode.Prerender,
   },
 
-  // Deliberadamente sem SSR, para servir de contraste no palco: o
-  // `view-source:` desta rota vem vazio.
+  // Deliberately server-rendering nothing, as a control group: `view-source:`
+  // on this route comes back empty.
   {
-    path: 'painel',
+    path: 'dashboard',
     renderMode: RenderMode.Client,
   },
 

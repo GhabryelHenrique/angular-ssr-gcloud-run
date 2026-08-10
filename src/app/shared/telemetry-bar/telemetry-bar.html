@@ -1,58 +1,56 @@
 @let t = telemetry();
 
-<aside class="barra" [class.barra--csr]="!t">
+<aside class="bar" [class.bar--csr]="!t">
   @if (t) {
-    <div class="grupo grupo--destaque">
-      <span class="rotulo">render</span>
-      <span class="valor valor--forte">{{ renderOrigin() }}</span>
-      <span class="separador">·</span>
-      <span class="valor">{{ renderedAtLabel() }}</span>
-      <span class="separador">·</span>
-      <span class="valor valor--forte">{{ t.renderMs }}ms</span>
+    <div class="group group--primary">
+      <span class="label">render</span>
+      <span class="value value--strong">{{ renderOrigin() }}</span>
+      <span class="divider">·</span>
+      <span class="value">{{ renderedAtLabel() }}</span>
+      <span class="divider">·</span>
+      <span class="value value--strong">{{ t.renderMs }}ms</span>
     </div>
 
-    <div class="grupo">
-      <span class="rotulo">instância</span>
-      <span class="valor">{{ t.instanceId }}</span>
-      <span class="separador">·</span>
-      <span class="rotulo">req</span>
-      <span class="valor">#{{ t.requestNumber }}</span>
-      <span class="separador">·</span>
-      <span class="rotulo">uptime</span>
-      <span class="valor">{{ uptimeLabel() }}</span>
+    <div class="group">
+      <span class="label">instance</span>
+      <span class="value">{{ t.instanceId }}</span>
+      <span class="divider">·</span>
+      <span class="label">req</span>
+      <span class="value">#{{ t.requestNumber }}</span>
+      <span class="divider">·</span>
+      <span class="label">uptime</span>
+      <span class="value">{{ uptimeLabel() }}</span>
     </div>
 
-    <div class="grupo">
-      <span class="selo" [class.selo--frio]="t.coldStart" [class.selo--quente]="!t.coldStart">
-        {{ t.coldStart ? 'COLD START' : 'QUENTE' }}
+    <div class="group">
+      <span class="badge" [class.badge--cold]="t.coldStart" [class.badge--warm]="!t.coldStart">
+        {{ t.coldStart ? 'COLD START' : 'WARM' }}
       </span>
       @if (hydrated()) {
-        <span class="selo selo--hidratado">HIDRATADO</span>
+        <span class="badge badge--hydrated">HYDRATED</span>
       }
     </div>
 
-    <div class="grupo grupo--infra">
-      <span class="rotulo">PORT</span>
-      <span class="valor">{{ t.port }}</span>
-      <span class="separador">·</span>
-      <span class="rotulo">concorrência</span>
-      <span class="valor">{{ t.inFlight }} <span class="fraco">(pico {{ t.peakInFlight }})</span></span>
+    <div class="group group--infra">
+      <span class="label">PORT</span>
+      <span class="value">{{ t.port }}</span>
+      <span class="divider">·</span>
+      <span class="label">in flight</span>
+      <span class="value">{{ t.inFlight }} <span class="muted">(peak {{ t.peakInFlight }})</span></span>
       @if (t.revision) {
-        <span class="separador">·</span>
-        <span class="rotulo">K_REVISION</span>
-        <span class="valor">{{ t.revision }}</span>
+        <span class="divider">·</span>
+        <span class="label">K_REVISION</span>
+        <span class="value">{{ t.revision }}</span>
       }
-      <span class="separador">·</span>
-      <span class="valor fraco">{{ t.platform }}</span>
+      <span class="divider">·</span>
+      <span class="value muted">{{ t.platform }}</span>
     </div>
   } @else {
-    <div class="grupo grupo--destaque">
-      <span class="rotulo">render</span>
-      <span class="valor valor--forte">{{ renderOrigin() }}</span>
-      <span class="separador">·</span>
-      <span class="valor fraco"
-        >nenhum HTML veio do servidor — o navegador montou esta tela sozinho</span
-      >
+    <div class="group group--primary">
+      <span class="label">render</span>
+      <span class="value value--strong">{{ renderOrigin() }}</span>
+      <span class="divider">·</span>
+      <span class="value muted">no HTML came from the server — the browser built this page alone</span>
     </div>
   }
 </aside>

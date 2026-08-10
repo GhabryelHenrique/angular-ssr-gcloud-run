@@ -1,34 +1,32 @@
 ﻿<#
 .SYNOPSIS
-  Passo 5 — deploy no Cloud Run.
+  Step 5 — deploy to Cloud Run.
 .DESCRIPTION
-  Corresponde aos slides 20 e 23. NÃO executa nada sem confirmação explícita:
-  este é o único script da demo que gasta dinheiro e mexe num projeto real.
+  Does NOT run anything without explicit confirmation: this is the only script
+  here that spends money and touches a real project.
 
-  Use -Simular (padrão) para só imprimir o comando, que é o suficiente para
-  mostrar no palco. Passe -Executar para rodar de verdade.
-.PARAMETER Executar
-  Executa o deploy de fato. Sem esta flag o script apenas mostra o comando.
+  By default it just prints the command. Pass -Execute to actually deploy.
+.PARAMETER Execute
+  Actually performs the deploy. Without this flag the script only prints.
 #>
 
 param(
-  [string]$Servico = 'angular-ssr',
-  [string]$Regiao = 'southamerica-east1',
-  [switch]$Executar
+  [string]$Service = 'angular-ssr',
+  [string]$Region = 'southamerica-east1',
+  [switch]$Execute
 )
 
-. "$PSScriptRoot\_comum.ps1"
+. "$PSScriptRoot\_common.ps1"
 
-$raiz = Get-RaizProjeto
-Set-Location $raiz
+$root = Get-ProjectRoot
+Set-Location $root
 
-Write-Titulo 'Deploy em um comando' 'slides 20 e 23'
+Write-Heading 'Deploy in one command'
 
-# Montado como texto para caber no telão de forma legível.
-$comando = @"
-gcloud run deploy $Servico ``
+$command = @"
+gcloud run deploy $Service ``
     --source . ``
-    --region $Regiao ``
+    --region $Region ``
     --allow-unauthenticated ``
     --cpu 1 --memory 512Mi ``
     --concurrency 80 ``
@@ -36,82 +34,81 @@ gcloud run deploy $Servico ``
     --cpu-boost
 "@
 
-Write-Host $comando -ForegroundColor Cyan
+Write-Host $command -ForegroundColor Cyan
 Write-Host ''
-Write-Nota '--source .        o Cloud Build empacota por você. Existe Dockerfile?'
-Write-Nota '                  Ele usa o seu. Não existe? O buildpack detecta o Node.'
-Write-Nota '--concurrency 80  uma instância atende 80 requisições simultâneas.'
-Write-Nota '--min-instances 1 uma instância sempre quente: tira o cold start do'
-Write-Nota '                  caminho do usuário. É o único item fixo da fatura.'
-Write-Nota '--cpu-boost       CPU extra só durante a inicialização.'
+Write-Note '--source .        Cloud Build packages it for you. Dockerfile present?'
+Write-Note '                  It uses yours. Absent? A buildpack detects Node.'
+Write-Note '--concurrency 80  one instance serves up to 80 simultaneous requests.'
+Write-Note '--min-instances 1 one always-warm instance keeps cold starts off the'
+Write-Note '                  user path. It is the only fixed line on the bill.'
+Write-Note '--cpu-boost       extra CPU during startup only.'
 Write-Host ''
 
 # -----------------------------------------------------------------------------
-# Verificações antes de qualquer coisa
+# Preflight checks
 # -----------------------------------------------------------------------------
-$temGcloud = $null -ne (Get-Command gcloud -ErrorAction SilentlyContinue)
+$hasGcloud = $null -ne (Get-Command gcloud -ErrorAction SilentlyContinue)
 
-if (-not $temGcloud) {
-  Write-Host '  gcloud não está instalado nesta máquina.' -ForegroundColor Yellow
-  Write-Nota 'Instale em: https://cloud.google.com/sdk/docs/install'
-  Write-Nota 'Para a demo, mostrar o comando acima já cumpre o papel do slide 20.'
+if (-not $hasGcloud) {
+  Write-Host '  gcloud is not installed on this machine.' -ForegroundColor Yellow
+  Write-Note 'Install it from: https://cloud.google.com/sdk/docs/install'
   Write-Host ''
   return
 }
 
-if (-not $Executar) {
-  Write-Host '  Modo simulação: nada foi executado.' -ForegroundColor Yellow
-  Write-Nota 'Para rodar de verdade:  .\demo\5-deploy.ps1 -Executar'
+if (-not $Execute) {
+  Write-Host '  Dry run: nothing was executed.' -ForegroundColor Yellow
+  Write-Note 'To deploy for real:  .\demo\5-deploy.ps1 -Execute'
   Write-Host ''
   return
 }
 
 # -----------------------------------------------------------------------------
-# Confirmação — daqui para baixo mexe num projeto real e gera custo
+# Confirmation — everything below touches a real project and costs money
 # -----------------------------------------------------------------------------
-$projeto = (gcloud config get-value project 2>$null)
-$conta = (gcloud config get-value account 2>$null)
+$project = (gcloud config get-value project 2>$null)
+$account = (gcloud config get-value account 2>$null)
 
-Write-Titulo 'Confirmação'
-Write-Destaque 'Projeto' $projeto
-Write-Destaque 'Conta' $conta
-Write-Destaque 'Região' $Regiao
-Write-Destaque 'Serviço' $Servico
+Write-Heading 'Confirmation'
+Write-Metric 'Project' $project
+Write-Metric 'Account' $account
+Write-Metric 'Region' $Region
+Write-Metric 'Service' $Service
 Write-Host ''
-Write-Host '  --min-instances 1 mantém uma instância ligada 24/7 e gera custo' -ForegroundColor Yellow
-Write-Host '  contínuo, mesmo sem tráfego. Lembre de derrubar depois da palestra:' -ForegroundColor Yellow
-Write-Nota "gcloud run services delete $Servico --region $Regiao"
+Write-Host '  --min-instances 1 keeps one instance running 24/7 and bills' -ForegroundColor Yellow
+Write-Host '  continuously, even with zero traffic. Remember to tear it down:' -ForegroundColor Yellow
+Write-Note "gcloud run services delete $Service --region $Region"
 Write-Host ''
 
-$resposta = Read-Host "Digite o nome do serviço ($Servico) para confirmar o deploy"
-if ($resposta -ne $Servico) {
-  Write-Host '  Cancelado.' -ForegroundColor Yellow
+$answer = Read-Host "Type the service name ($Service) to confirm the deploy"
+if ($answer -ne $Service) {
+  Write-Host '  Cancelled.' -ForegroundColor Yellow
   return
 }
 
 # -----------------------------------------------------------------------------
 # Deploy
 # -----------------------------------------------------------------------------
-gcloud run deploy $Servico `
+gcloud run deploy $Service `
   --source . `
-  --region $Regiao `
+  --region $Region `
   --allow-unauthenticated `
   --cpu 1 --memory 512Mi `
   --concurrency 80 `
   --min-instances 1 --max-instances 20 `
   --cpu-boost
 
-if ($LASTEXITCODE -ne 0) { throw 'O deploy falhou.' }
+if ($LASTEXITCODE -ne 0) { throw 'The deploy failed.' }
 
 Write-Host ''
-Write-Titulo 'No ar'
+Write-Heading 'Live'
 
-$url = gcloud run services describe $Servico --region $Regiao --format 'value(status.url)'
-Write-Destaque 'URL' $url
+$url = gcloud run services describe $Service --region $Region --format 'value(status.url)'
+Write-Metric 'URL' $url
 Write-Host ''
-Write-Nota 'Cada deploy cria uma revisão imutável. Para dividir tráfego 90/10:'
-Write-Nota "gcloud run services update-traffic $Servico --to-revisions LATEST=10 --region $Regiao"
+Write-Note 'Every deploy creates an immutable revision. To split traffic 90/10:'
+Write-Note "gcloud run services update-traffic $Service --to-revisions LATEST=10 --region $Region"
 Write-Host ''
-Write-Nota 'Se as requisições voltarem 400, o host não está autorizado: veja'
-Write-Nota 'security.allowedHosts no angular.json ou a variável ALLOWED_HOSTS.'
+Write-Note 'If requests come back 400, the host is not authorized: check'
+Write-Note 'security.allowedHosts in angular.json or the ALLOWED_HOSTS variable.'
 Write-Host ''

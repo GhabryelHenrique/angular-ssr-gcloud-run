@@ -18,27 +18,27 @@ export class TelemetryBar {
     if (!iso) {
       return '--:--:--';
     }
-    const data = new Date(iso);
-    const pad = (valor: number, casas = 2) => String(valor).padStart(casas, '0');
+    const date = new Date(iso);
+    const pad = (value: number, digits = 2) => String(value).padStart(digits, '0');
 
     return (
-      `${pad(data.getHours())}:${pad(data.getMinutes())}:${pad(data.getSeconds())}` +
-      `.${pad(data.getMilliseconds(), 3)}`
+      `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}` +
+      `.${pad(date.getMilliseconds(), 3)}`
     );
   });
 
   protected readonly uptimeLabel = computed(() => {
     const ms = this.telemetry()?.uptimeMs ?? 0;
-    const totalSegundos = Math.floor(ms / 1000);
-    const minutos = Math.floor(totalSegundos / 60);
-    const segundos = totalSegundos % 60;
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
 
-    return minutos > 0 ? `${minutos}m${String(segundos).padStart(2, '0')}s` : `${segundos}s`;
+    return minutes > 0 ? `${minutes}m${String(seconds).padStart(2, '0')}s` : `${seconds}s`;
   });
 
   constructor() {
-    // Roda apenas no navegador: é o sinal de que a hidratação assumiu e de que
-    // os valores abaixo vieram do TransferState, não de uma nova requisição.
+    // Runs in the browser only: proof that hydration took over and that the
+    // values below came from TransferState, not from a fresh request.
     afterNextRender(() => this.store.markHydrated());
   }
 }

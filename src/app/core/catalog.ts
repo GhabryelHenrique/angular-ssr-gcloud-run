@@ -3,116 +3,117 @@ import { TelemetryStore } from './telemetry';
 
 export interface Product {
   id: string;
-  nome: string;
-  categoria: string;
-  preco: number;
-  estoque: number;
-  descricao: string;
+  name: string;
+  category: string;
+  price: number;
+  stock: number;
+  description: string;
 }
 
 /**
- * Catálogo da demo.
+ * The demo catalog.
  *
- * Preço e estoque são exatamente o tipo de conteúdo que o slide 8 usa para
- * justificar SSR: muda a toda hora, então não cabe num build estático — mas
- * precisa estar no HTML porque o robô de busca não espera o JavaScript.
+ * Price and stock are exactly the kind of content that justifies SSR: they
+ * change constantly, so they cannot be baked into a build — yet they must be
+ * present in the HTML, because search engine crawlers do not wait for
+ * JavaScript to run.
  */
-const CATALOGO: readonly Product[] = [
+const CATALOG: readonly Product[] = [
   {
     id: 'kb-01',
-    nome: 'Teclado Mecânico 75%',
-    categoria: 'Periféricos',
-    preco: 489.9,
-    estoque: 12,
-    descricao: 'Switch tátil, hot-swap, ABNT2.',
+    name: 'Mechanical Keyboard 75%',
+    category: 'Peripherals',
+    price: 129.9,
+    stock: 12,
+    description: 'Tactile switches, hot-swappable, aluminium case.',
   },
   {
     id: 'ms-02',
-    nome: 'Mouse Sem Fio Leve',
-    categoria: 'Periféricos',
-    preco: 299.0,
-    estoque: 4,
-    descricao: '58g, sensor óptico de 26k DPI.',
+    name: 'Lightweight Wireless Mouse',
+    category: 'Peripherals',
+    price: 79.0,
+    stock: 4,
+    description: '58g, 26k DPI optical sensor.',
   },
   {
     id: 'mn-03',
-    nome: 'Monitor 27" 144Hz',
-    categoria: 'Monitores',
-    preco: 1899.0,
-    estoque: 3,
-    descricao: 'IPS, 1440p, calibrado de fábrica.',
+    name: '27" 144Hz Monitor',
+    category: 'Displays',
+    price: 449.0,
+    stock: 3,
+    description: 'IPS, 1440p, factory calibrated.',
   },
   {
     id: 'mn-04',
-    nome: 'Monitor Portátil 16"',
-    categoria: 'Monitores',
-    preco: 1249.0,
-    estoque: 0,
-    descricao: 'USB-C, 1080p, com capa magnética.',
+    name: '16" Portable Monitor',
+    category: 'Displays',
+    price: 299.0,
+    stock: 0,
+    description: 'USB-C, 1080p, magnetic cover included.',
   },
   {
     id: 'hp-05',
-    nome: 'Headset com Cancelamento',
-    categoria: 'Áudio',
-    preco: 1599.0,
-    estoque: 7,
-    descricao: '35h de bateria, modo transparência.',
+    name: 'Noise Cancelling Headset',
+    category: 'Audio',
+    price: 349.0,
+    stock: 7,
+    description: '35h battery life, transparency mode.',
   },
   {
     id: 'mc-06',
-    nome: 'Microfone USB Cardioide',
-    categoria: 'Áudio',
-    preco: 749.0,
-    estoque: 15,
-    descricao: 'Monitoramento sem latência.',
+    name: 'USB Cardioid Microphone',
+    category: 'Audio',
+    price: 159.0,
+    stock: 15,
+    description: 'Zero latency monitoring.',
   },
   {
     id: 'dk-07',
-    nome: 'Dock Thunderbolt 4',
-    categoria: 'Conectividade',
-    preco: 2190.0,
-    estoque: 2,
-    descricao: '96W de carga, dois monitores 4K.',
+    name: 'Thunderbolt 4 Dock',
+    category: 'Connectivity',
+    price: 389.0,
+    stock: 2,
+    description: '96W charging, dual 4K displays.',
   },
   {
     id: 'hb-08',
-    nome: 'Hub USB-C 7 em 1',
-    categoria: 'Conectividade',
-    preco: 389.0,
-    estoque: 23,
-    descricao: 'HDMI 4K60, leitor SD, RJ45.',
+    name: '7-in-1 USB-C Hub',
+    category: 'Connectivity',
+    price: 69.0,
+    stock: 23,
+    description: 'HDMI 4K60, SD reader, gigabit ethernet.',
   },
   {
     id: 'ss-09',
-    nome: 'SSD NVMe 2TB',
-    categoria: 'Armazenamento',
-    preco: 1099.0,
-    estoque: 9,
-    descricao: 'PCIe 4.0, 7.400 MB/s de leitura.',
+    name: '2TB NVMe SSD',
+    category: 'Storage',
+    price: 189.0,
+    stock: 9,
+    description: 'PCIe 4.0, 7,400 MB/s read.',
   },
   {
     id: 'hd-10',
-    nome: 'HD Externo 5TB',
-    categoria: 'Armazenamento',
-    preco: 799.0,
-    estoque: 6,
-    descricao: 'USB 3.2, alimentado pela porta.',
+    name: '5TB External Drive',
+    category: 'Storage',
+    price: 139.0,
+    stock: 6,
+    description: 'USB 3.2, bus powered.',
   },
   {
-    id: 'cd-11',
-    nome: 'Cadeira Ergonômica',
-    categoria: 'Estação',
-    preco: 2890.0,
-    estoque: 1,
-    descricao: 'Encosto em tela, apoio lombar ajustável.',
+    id: 'ch-11',
+    name: 'Ergonomic Chair',
+    category: 'Workspace',
+    price: 549.0,
+    stock: 1,
+    description: 'Mesh back, adjustable lumbar support.',
   },
   {
-    id: 'br-12',
-    nome: 'Braço Articulado p/ Monitor',
-    categoria: 'Estação',
-    preco: 559.0,
-    estoque: 18,
-    descricao: 'VESA 75/100, até 9kg.',
+    id: 'ar-12',
+    name: 'Monitor Arm',
+    category: 'Workspace',
+    price: 99.0,
+    stock: 18,
+    description: 'VESA 75/100, supports up to 9kg.',
   },
 ];
 
@@ -123,25 +124,25 @@ export class CatalogStore {
   private readonly pendingTasks = inject(PendingTasks);
   private readonly telemetry = inject(TelemetryStore);
 
-  private readonly items = signal<readonly Product[]>(CATALOGO);
+  private readonly items = signal<readonly Product[]>(CATALOG);
 
-  readonly produtos = this.items.asReadonly();
+  readonly products = this.items.asReadonly();
 
   constructor() {
     this.simulateSlowBackend();
   }
 
   byId(id: string): Product | undefined {
-    return CATALOGO.find((produto) => produto.id === id);
+    return CATALOG.find((product) => product.id === id);
   }
 
   /**
-   * Encena o estágio 3 do cold start (slide 22): "Angular monta a rota, resolve
-   * os dados e serializa o HTML — chamada externa lenta aparece aqui".
+   * Simulates a slow upstream call in the middle of the render.
    *
-   * `PendingTasks.run` é o que faz o SSR realmente esperar antes de serializar;
-   * sem isso o Angular fecharia o HTML antes da resposta chegar. Ligue com
-   * `RENDER_DELAY_MS=800` para mostrar um backend lento inflando o render.
+   * `PendingTasks.run` is what makes SSR actually wait before serializing the
+   * HTML; without it Angular would close the document before the response
+   * arrived. Set `RENDER_DELAY_MS=800` to watch a slow backend inflate render
+   * time — and to see that the cost belongs to the data source, not to SSR.
    */
   private simulateSlowBackend(): void {
     const delay = this.telemetry.telemetry()?.renderDelayMs ?? 0;
@@ -151,7 +152,7 @@ export class CatalogStore {
 
     this.pendingTasks.run(async () => {
       await sleep(delay);
-      this.items.set(CATALOGO);
+      this.items.set(CATALOG);
     });
   }
 }

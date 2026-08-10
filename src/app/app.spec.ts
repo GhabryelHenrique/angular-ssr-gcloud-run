@@ -3,9 +3,9 @@ import { REQUEST_CONTEXT, TransferState } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
 import { ServerRenderContext, TelemetryStore } from './core/telemetry';
-import { MoedaPipe } from './shared/moeda-pipe';
+import { PricePipe } from './shared/price-pipe';
 
-function contextoFalso(sobrescreve: Partial<ServerRenderContext> = {}): ServerRenderContext {
+function fakeContext(overrides: Partial<ServerRenderContext> = {}): ServerRenderContext {
   return {
     instanceId: 'abc12345',
     requestNumber: 1,
@@ -19,12 +19,12 @@ function contextoFalso(sobrescreve: Partial<ServerRenderContext> = {}): ServerRe
     platform: 'local',
     renderDelayMs: 0,
     handleStartMs: Date.now(),
-    ...sobrescreve,
+    ...overrides,
   };
 }
 
 describe('App', () => {
-  it('monta o shell com as três modalidades de render na navegação', async () => {
+  it('renders the three render modes in the navigation', async () => {
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [provideRouter([])],
@@ -33,40 +33,40 @@ describe('App', () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
 
-    const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
-    expect(texto).toContain('Server');
-    expect(texto).toContain('Prerender');
-    expect(texto).toContain('Client');
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Server');
+    expect(text).toContain('Prerender');
+    expect(text).toContain('Client');
   });
 });
 
 describe('TelemetryStore', () => {
-  it('grava a telemetria do servidor no TransferState para o cliente reaproveitar', () => {
+  it('writes server telemetry into TransferState so the client can reuse it', () => {
     TestBed.configureTestingModule({
-      providers: [{ provide: REQUEST_CONTEXT, useValue: contextoFalso() }],
+      providers: [{ provide: REQUEST_CONTEXT, useValue: fakeContext() }],
     });
 
     const store = TestBed.inject(TelemetryStore);
     const transferState = TestBed.inject(TransferState);
 
     expect(store.telemetry()?.instanceId).toBe('abc12345');
-    // Sem isto, a barra apagaria assim que o bundle assumisse no navegador.
+    // Without this, the telemetry bar would go blank as soon as the bundle
+    // took over in the browser.
     expect(transferState.toJson()).toContain('abc12345');
   });
 
-  it('sem contexto de requisição, entende que o render foi client-side', () => {
+  it('reports a client-side render when no request context is present', () => {
     TestBed.configureTestingModule({});
 
     const store = TestBed.inject(TelemetryStore);
 
     expect(store.telemetry()).toBeNull();
-    expect(store.renderOrigin()).toBe('navegador (CSR)');
+    expect(store.renderOrigin()).toBe('browser (CSR)');
   });
 });
 
-describe('MoedaPipe', () => {
-  it('formata em real com o mesmo resultado no servidor e no navegador', () => {
-    // Espaço não-quebrável é o que o Intl usa entre "R$" e o número.
-    expect(new MoedaPipe().transform(489.9).replace(/ /g, ' ')).toBe('R$ 489,90');
+describe('PricePipe', () => {
+  it('formats identically on the server and in the browser', () => {
+    expect(new PricePipe().transform(129.9)).toBe('$129.90');
   });
 });

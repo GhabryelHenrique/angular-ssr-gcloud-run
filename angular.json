@@ -7,7 +7,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "poc-cloud-run": {
+    "angular-ssr-cloud-run": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -76,10 +76,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "poc-cloud-run:build:production"
+              "buildTarget": "angular-ssr-cloud-run:build:production"
             },
             "development": {
-              "buildTarget": "poc-cloud-run:build:development"
+              "buildTarget": "angular-ssr-cloud-run:build:development"
             }
           },
           "defaultConfiguration": "development"

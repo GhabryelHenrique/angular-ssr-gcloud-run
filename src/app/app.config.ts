@@ -7,9 +7,10 @@ import { routes } from './app.routes';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    // `withComponentInputBinding` faz o :id da rota chegar como input() no componente.
+    // `withComponentInputBinding` turns route params into component inputs,
+    // which is how ProductPage receives `:id`.
     provideRouter(routes, withComponentInputBinding()),
-    // No Angular 22 a hidratação incremental já é o padrão — não precisa de flag.
+    // Angular 22 enables incremental hydration by default — no flag needed.
     provideClientHydration(),
   ],
 };

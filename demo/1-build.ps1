@@ -1,70 +1,70 @@
 ﻿<#
 .SYNOPSIS
-  Passo 1 — o build do SSR produz um artefato só: estáticos + servidor Node.
+  Step 1 — an SSR build produces one artifact: static files plus a Node server.
 .DESCRIPTION
-  Corresponde ao slide 17. Roda o `ng build` e mostra a árvore do dist,
-  separando o que vai para o navegador do que roda no servidor.
+  Runs `ng build` and prints the resulting tree, separating what ships to the
+  browser from what runs on the server.
 #>
 
-. "$PSScriptRoot\_comum.ps1"
+. "$PSScriptRoot\_common.ps1"
 
-$raiz = Get-RaizProjeto
-Set-Location $raiz
+$root = Get-ProjectRoot
+Set-Location $root
 
-Write-Titulo 'O build do SSR' 'slide 17'
+Write-Heading 'The SSR build'
 
-Write-Passo 'ng build'
-Write-Nota 'Um comando só. Sem webpack custom, sem config de bundler.'
+Write-Step 'ng build'
+Write-Note 'One command. No custom webpack, no bundler configuration.'
 Write-Host ''
 
-$cronometro = [System.Diagnostics.Stopwatch]::StartNew()
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 npm run build
-$cronometro.Stop()
+$stopwatch.Stop()
 
-if ($LASTEXITCODE -ne 0) { throw 'O build falhou.' }
+if ($LASTEXITCODE -ne 0) { throw 'The build failed.' }
 
-$dist = Join-Path $raiz 'dist\poc-cloud-run'
+$dist = Join-Path $root 'dist\angular-ssr-cloud-run'
 $browser = Join-Path $dist 'browser'
 $server = Join-Path $dist 'server'
 
-Write-Titulo 'O que saiu do build'
+Write-Heading 'What the build produced'
 
-function Get-Tamanho {
-  param([string]$Caminho)
-  if (-not (Test-Path $Caminho)) { return 0 }
-  (Get-ChildItem $Caminho -Recurse -File | Measure-Object -Property Length -Sum).Sum
+function Get-DirectorySize {
+  param([string]$Path)
+  if (-not (Test-Path $Path)) { return 0 }
+  (Get-ChildItem $Path -Recurse -File | Measure-Object -Property Length -Sum).Sum
 }
 
-$tamanhoBrowser = Get-Tamanho $browser
-$tamanhoServer = Get-Tamanho $server
+$browserSize = Get-DirectorySize $browser
+$serverSize = Get-DirectorySize $server
 
-Write-Host '  dist/poc-cloud-run/' -ForegroundColor White
-Write-Host ('    browser/   {0,-12} ' -f (Format-Bytes $tamanhoBrowser)) -NoNewline -ForegroundColor Cyan
-Write-Host 'estáticos com hash + rotas prerenderizadas' -ForegroundColor DarkGray
-Write-Host ('    server/    {0,-12} ' -f (Format-Bytes $tamanhoServer)) -NoNewline -ForegroundColor Cyan
-Write-Host 'server.mjs — o processo Node que renderiza' -ForegroundColor DarkGray
+Write-Host '  dist/angular-ssr-cloud-run/' -ForegroundColor White
+Write-Host ('    browser/   {0,-12} ' -f (Format-Bytes $browserSize)) -NoNewline -ForegroundColor Cyan
+Write-Host 'hashed static assets + prerendered routes' -ForegroundColor DarkGray
+Write-Host ('    server/    {0,-12} ' -f (Format-Bytes $serverSize)) -NoNewline -ForegroundColor Cyan
+Write-Host 'server.mjs — the Node process that renders' -ForegroundColor DarkGray
 Write-Host ''
 
-# As rotas Prerender viram arquivos .html de verdade dentro do browser/.
-$prerenderizados = Get-ChildItem $browser -Recurse -Filter '*.html' -File |
+# Prerendered routes become real .html files inside browser/.
+$prerendered = Get-ChildItem $browser -Recurse -Filter '*.html' -File |
   Where-Object { $_.Name -ne 'index.csr.html' }
 
-if ($prerenderizados) {
-  Write-Passo 'Rotas congeladas no build (RenderMode.Prerender)'
-  foreach ($arquivo in $prerenderizados) {
-    $relativo = $arquivo.FullName.Substring($browser.Length + 1)
-    Write-Nota ("{0,-34} {1}" -f $relativo, (Format-Bytes $arquivo.Length))
+if ($prerendered) {
+  Write-Step 'Routes frozen at build time (RenderMode.Prerender)'
+  foreach ($file in $prerendered) {
+    $relative = $file.FullName.Substring($browser.Length + 1)
+    Write-Note ("{0,-34} {1}" -f $relative, (Format-Bytes $file.Length))
   }
   Write-Host ''
 }
 
-Write-Passo 'Ponto de entrada do servidor'
-$entrada = Join-Path $server 'server.mjs'
-Write-Nota "node dist/poc-cloud-run/server/server.mjs   ($(Format-Bytes (Get-Item $entrada).Length))"
+Write-Step 'Server entry point'
+$entry = Join-Path $server 'server.mjs'
+Write-Note "node dist/angular-ssr-cloud-run/server/server.mjs   ($(Format-Bytes (Get-Item $entry).Length))"
 Write-Host ''
 
-Write-Destaque 'Tempo de build' ('{0:N1}s' -f $cronometro.Elapsed.TotalSeconds)
-Write-Destaque 'Total do artefato' (Format-Bytes ($tamanhoBrowser + $tamanhoServer))
+Write-Metric 'Build time' ('{0:N1}s' -f $stopwatch.Elapsed.TotalSeconds)
+Write-Metric 'Total artifact size' (Format-Bytes ($browserSize + $serverSize))
 Write-Host ''
-Write-Nota 'É este diretório inteiro que entra na imagem Docker — e nada mais.'
+Write-Note 'This entire directory is what goes into the Docker image — nothing else.'
 Write-Host ''

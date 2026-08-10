@@ -1,0 +1,31 @@
+<header class="header">
+  <h1>Catalog</h1>
+  <p class="explainer">
+    Rendered on the server. Price and stock change constantly, so they cannot be baked into a
+    static build — but they still need to be in the HTML, because crawlers do not wait for
+    JavaScript. Open <code>view-source:</code> and you will find all
+    {{ products().length }} products already there.
+  </p>
+</header>
+
+<ul class="grid">
+  @for (product of products(); track product.id) {
+    <li class="card">
+      <a [routerLink]="['/product', product.id]" class="card__link">
+        <span class="card__category">{{ product.category }}</span>
+        <h2 class="card__name">{{ product.name }}</h2>
+        <p class="card__description">{{ product.description }}</p>
+        <div class="card__footer">
+          <span class="card__price">{{ product.price | price }}</span>
+          @if (product.stock === 0) {
+            <span class="stock stock--out">out of stock</span>
+          } @else if (product.stock <= 4) {
+            <span class="stock stock--low">only {{ product.stock }} left</span>
+          } @else {
+            <span class="stock">{{ product.stock }} in stock</span>
+          }
+        </div>
+      </a>
+    </li>
+  }
+</ul>
