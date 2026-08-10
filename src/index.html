@@ -6,30 +6,32 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Reference project for deploying an Angular SSR application to Google Cloud Run.">
-  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#202124" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <script>
     /*
-     * Applies the stored theme before first paint.
+     * Restores a previously chosen theme before first paint.
      *
      * This has to run here, synchronously in <head>, rather than inside
-     * Angular: the server cannot know the visitor's preference, so any theme
+     * Angular: the server cannot know the visitor's choice, so any theme
      * decision made after bootstrap arrives too late and the page visibly
      * flashes the wrong colours on every load.
+     *
+     * Light is the default and the system preference is intentionally not
+     * consulted; dark is opt-in through the header toggle. Doing nothing here
+     * therefore leaves the page light, which is the desired fallback when
+     * storage is unavailable.
      *
      * It only sets an attribute. Nothing in the server-rendered markup depends
      * on the theme, so hydration is unaffected.
      */
     (function () {
       try {
-        var stored = localStorage.getItem('preferred-theme');
-        if (stored !== 'light' && stored !== 'dark') {
-          stored = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        if (localStorage.getItem('preferred-theme') === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
         }
-        document.documentElement.setAttribute('data-theme', stored);
       } catch (e) {
-        /* Private browsing or storage disabled: fall back to the CSS media query. */
+        /* Private browsing or storage disabled: stay on the light default. */
       }
     })();
   </script>

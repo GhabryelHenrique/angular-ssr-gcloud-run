@@ -1,3 +1,5 @@
+@use './fonts';
+
 /* =============================================================================
    Design tokens
    =============================================================================
@@ -46,12 +48,14 @@
   --g-grey-1000: #171717;
 
   /* --- Typography --------------------------------------------------------- */
-  /* Google Sans is not redistributable, so this falls back through Roboto to
-     the platform UI font. No webfont download, no layout shift. */
-  --font-sans: 'Google Sans', 'Google Sans Text', Roboto, 'Segoe UI',
+  /* Google Sans Flex for the interface, Google Sans Code for anything that
+     represents machine output — telemetry, identifiers, measurements. Both are
+     self-hosted; see _fonts.scss. The fallbacks matter because `font-display:
+     swap` paints them first. */
+  --font-sans: 'Google Sans Flex Variable', 'Google Sans', Roboto, 'Segoe UI',
     -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'Roboto Mono', 'Cascadia Code', Consolas, 'SF Mono', ui-monospace,
-    monospace;
+  --font-mono: 'Google Sans Code Variable', 'Roboto Mono', Consolas, 'SF Mono',
+    ui-monospace, monospace;
 
   /* --- Shape and elevation ------------------------------------------------ */
   --radius-sm: 8px;
@@ -128,14 +132,11 @@
   --elevation-2: 0 1px 3px rgba(0, 0, 0, 0.6), 0 4px 8px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* System preference wins when the visitor has expressed no choice. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    @include dark-theme;
-  }
-}
-
-/* An explicit choice always wins over the system preference. */
+/* Light is the default, deliberately, and the system preference does not
+   override it: this project is presented on projectors and read as
+   documentation, where a light surface is the predictable choice. Dark stays
+   available as an explicit opt-in through the header toggle, and the choice
+   persists across reloads. */
 :root[data-theme='dark'] {
   @include dark-theme;
 }

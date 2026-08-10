@@ -251,19 +251,49 @@ looking at before you read a word.
 | Prerender | Google Blue `#1a73e8` | `#8ab4f8` |
 | Client | Google Red `#d93025` | `#f28b82` |
 
+### Typography
+
+[Google Sans Flex](https://github.com/googlefonts/googlesans-flex) for the
+interface and [Google Sans Code](https://github.com/googlefonts/googlesans-code)
+for anything representing machine output — telemetry, identifiers,
+measurements. Both are released by Google under the SIL Open Font License 1.1
+and installed from `@fontsource-variable`, so they are genuinely
+redistributable rather than merely named in a font stack and silently falling
+back to Arial.
+
+Two decisions follow from this being a performance project:
+
+- **Self-hosted, not CDN-loaded.** The files ship inside the image. Server-side
+  rendering exists so the first paint waits on nothing; adding a third-party
+  round trip to the render path would undo that.
+- **Latin subset only.** The packages ship ten to eleven subsets each.
+  Importing their stylesheet wholesale copies 318 kB of woff2 into the build;
+  declaring latin alone costs 83 kB. Browsers download only what they need at
+  runtime, but the build copies every file it can see. See
+  [`src/_fonts.scss`](src/_fonts.scss) to add the subsets you actually serve.
+
+Both are variable fonts, so one file covers the entire weight axis, and both
+use `font-display: swap` — never `block`, which would hide server-rendered HTML
+behind a font download and throw away the LCP that SSR just earned.
+
 ### Themes
 
-Light and dark, following the system preference by default and overridable
-with the toggle in the header. Two details are worth copying:
+**Light by default.** The system preference is intentionally not consulted:
+this project is read as documentation and shown on projectors, where a light
+surface is the predictable choice. Dark is an explicit opt-in through the
+header toggle, and the choice persists across reloads.
+
+Two details are worth copying:
 
 - **No flash of the wrong theme.** A small inline script in
   [`index.html`](src/index.html) applies `data-theme` before first paint. The
-  server cannot know a visitor's preference, so a theme decision made after
-  bootstrap always arrives too late.
+  server cannot know a visitor's stored choice, so a theme decision made after
+  bootstrap always arrives too late. Because light is the default, doing
+  nothing is also the correct fallback when storage is unavailable.
 - **No hydration mismatch.** Nothing in the rendered markup depends on the
   theme — the toggle ships both icons and CSS reveals one. Server and client
   therefore produce identical HTML even when the stored preference differs from
-  the server's default.
+  the default.
 
 Inside a component, reacting to `data-theme` requires `:host-context()`, not
 `:root`. Under emulated view encapsulation Angular rewrites `:root .icon` into
@@ -310,6 +340,7 @@ Skip step 3 and the bar goes blank the moment JavaScript takes over.
 ├── src/
 │   ├── server.ts                    Express + telemetry, logs, /healthz, /api/instance
 │   ├── styles.scss                  Design tokens and the two themes
+│   ├── _fonts.scss                  Self-hosted Google Sans faces
 │   ├── index.html                   Pre-paint theme script
 │   └── app/
 │       ├── app.routes.server.ts     Server | Prerender | Client — start here
