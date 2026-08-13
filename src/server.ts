@@ -7,6 +7,8 @@ import {
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
+import { bootReport, ensureWarm, inventory, startup } from './boot/startup';
+import { featuredSlice, type CatalogSlice, type Product } from './app/core/catalog-data';
 import type { ServerRenderContext } from './app/core/telemetry';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
@@ -76,12 +78,30 @@ const port = Number(process.env['PORT'] ?? 8080);
  * Artificial delay applied while resolving page data, used to simulate a slow
  * upstream API. Defaults to 0; set `RENDER_DELAY_MS=800` to see how a slow
  * backend inflates render time.
+ *
+ * Unlike the startup stages in `src/boot/startup.ts`, this cost is paid on
+ * every single request — it inflates the warm column too.
  */
 const renderDelayMs = Number(process.env['RENDER_DELAY_MS'] ?? 0) || 0;
+
+/** How many results one page of the catalog shows. */
+const PAGE_SIZE = 24;
 
 let requestCount = 0;
 let inFlight = 0;
 let peakInFlight = 0;
+
+/**
+ * Render times, kept so a page can show the cold and warm numbers side by side.
+ *
+ * A request cannot know its own render time before it finishes rendering, so
+ * what a page displays is always the history of the requests before it — which
+ * is exactly what makes reloading `/cold-start` interesting: the cold number
+ * stays pinned while the warm average forms next to it.
+ */
+let firstRenderMs: number | null = null;
+let warmRenderCount = 0;
+let warmRenderTotalMs = 0;
 
 // ---------------------------------------------------------------------------
 // Structured logging
@@ -121,16 +141,81 @@ function log(
 }
 
 // ---------------------------------------------------------------------------
+// Server-side data resolution
+//
+// The renderer never fetches anything. The server answers the question the URL
+// is asking — against the index it built at boot — and passes the result into
+// the render. One process, no self-inflicted HTTP round trip, and the HTML a
+// crawler receives is the same one a user receives.
+// ---------------------------------------------------------------------------
+
+/** Query string parsing that does not care whether the URL is absolute. */
+function queryOf(url: string): URLSearchParams {
+  return new URL(url, 'http://localhost').searchParams;
+}
+
+function pathOf(url: string): string {
+  return new URL(url, 'http://localhost').pathname;
+}
+
+function resolveCatalog(url: string): CatalogSlice {
+  if (pathOf(url) !== '/') {
+    return featuredSlice();
+  }
+
+  const params = queryOf(url);
+  const query = params.get('q') ?? '';
+  const category = params.get('category') ?? '';
+
+  // No query and no filter: show the curated rows rather than the first 24
+  // machine-generated variants. `view-source:` on `/` therefore still contains
+  // the twelve products the README talks about.
+  if (!query.trim() && !category.trim()) {
+    return featuredSlice();
+  }
+
+  return inventory().search({ query, category, limit: PAGE_SIZE });
+}
+
+function resolveProduct(url: string): Product | null {
+  const match = /^\/product\/([^/]+)\/?$/.exec(pathOf(url));
+  if (!match) {
+    return null;
+  }
+
+  return inventory().byId(decodeURIComponent(match[1])) ?? null;
+}
+
+// ---------------------------------------------------------------------------
 // Infrastructure endpoints
 // ---------------------------------------------------------------------------
 
 /**
  * Health check. The cold start script times how long a freshly created
  * container takes to answer this route: that is the cost of provisioning the
- * instance plus booting Node, before any rendering happens.
+ * instance, booting Node AND running the eager startup stages, because the
+ * port does not open until `startup` has resolved.
  */
 app.get('/healthz', (_req, res) => {
   res.json({ status: 'ok', instanceId, uptimeMs: Date.now() - bootTime });
+});
+
+/**
+ * The startup breakdown, as JSON.
+ *
+ * Deliberately outside the warm-up gate: a health or diagnostics endpoint that
+ * blocks on the connection pool would report the service as down while it is
+ * merely starting.
+ */
+app.get('/api/boot', (_req, res) => {
+  res.json({
+    instanceId,
+    requestsServed: requestCount,
+    firstRenderMs,
+    warmRenderAvgMs: warmRenderCount ? Math.round(warmRenderTotalMs / warmRenderCount) : null,
+    warmSamples: warmRenderCount,
+    ...bootReport(),
+  });
 });
 
 /**
@@ -149,7 +234,30 @@ app.get('/api/instance', (_req, res) => {
     service: K_SERVICE,
     revision: K_REVISION,
     platform,
+    boot: bootReport(),
   });
+});
+
+/**
+ * Search as an API, for anything that is not a page render.
+ *
+ * It reads the same index the server-rendered catalog reads, which is the
+ * point: building it cost one cold start and every consumer since has been
+ * answered from memory.
+ */
+app.get('/api/search', async (req, res) => {
+  await startup;
+  await ensureWarm();
+
+  const params = queryOf(req.url);
+  const slice = inventory().search({
+    query: params.get('q') ?? '',
+    category: params.get('category') ?? '',
+    limit: Math.min(Number(params.get('limit') ?? PAGE_SIZE) || PAGE_SIZE, 100),
+  });
+
+  res.setHeader('Server-Timing', `search;dur=${slice.searchMs}`);
+  res.json(slice);
 });
 
 /**
@@ -171,7 +279,7 @@ app.use(
  * The Angular renderer, instrumented.
  */
 app.use((req, res, next) => {
-  const handleStartMs = Date.now();
+  const arrivalMs = Date.now();
   const requestNumber = ++requestCount;
 
   // The first request served by a process is, by definition, the one that paid
@@ -181,67 +289,109 @@ app.use((req, res, next) => {
   inFlight++;
   peakInFlight = Math.max(peakInFlight, inFlight);
 
-  const context: ServerRenderContext = {
-    instanceId,
-    requestNumber,
-    coldStart,
-    uptimeMs: handleStartMs - bootTime,
-    inFlight,
-    peakInFlight,
-    port: String(port),
-    service: K_SERVICE,
-    revision: K_REVISION,
-    platform,
-    renderDelayMs,
-    handleStartMs,
-  };
+  // `startup` has already resolved by the time the port is open, so awaiting it
+  // here costs a microtask. `ensureWarm` is the one that can actually block —
+  // and only the request unlucky enough to be first.
+  void startup
+    .then(() => ensureWarm())
+    .then(() => {
+      const handleStartMs = Date.now();
+      const warmupWaitMs = handleStartMs - arrivalMs;
 
-  const traceHeader = req.header('x-cloud-trace-context');
-
-  angularApp
-    // The second argument reaches Angular through the REQUEST_CONTEXT token.
-    .handle(req, context)
-    .then((response) => {
-      if (!response) {
-        return next();
-      }
-
-      const renderMs = Date.now() - handleStartMs;
-
-      // Exposes real render time to DevTools and to curl. This is the precise
-      // source the measurement scripts read.
-      res.setHeader('Server-Timing', `render;dur=${renderMs}`);
-      res.setHeader('X-Instance-Id', instanceId);
-      res.setHeader('X-Cold-Start', String(coldStart));
-
-      log(
-        'INFO',
-        `${req.method} ${req.url}`,
-        {
-          renderMs,
-          coldStart,
+      const context: ServerRenderContext = {
+        telemetry: {
+          instanceId,
           requestNumber,
+          coldStart,
+          uptimeMs: handleStartMs - bootTime,
           inFlight,
-          path: req.url,
-          status: response.status,
+          peakInFlight,
+          port: String(port),
+          service: K_SERVICE,
+          revision: K_REVISION,
+          platform,
+          renderDelayMs,
+          handleStartMs,
+          boot: bootReport(),
+          warmupWaitMs,
+          firstRenderMs,
+          warmRenderAvgMs: warmRenderCount ? Math.round(warmRenderTotalMs / warmRenderCount) : null,
+          warmSamples: warmRenderCount,
         },
-        traceHeader,
-      );
+        catalog: resolveCatalog(req.url),
+        product: resolveProduct(req.url),
+      };
 
-      return writeResponseToNodeResponse(response, res);
-    })
-    .catch((error: unknown) => {
-      log(
-        'ERROR',
-        `Failed to render ${req.url}`,
-        {
-          path: req.url,
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        traceHeader,
+      const traceHeader = req.header('x-cloud-trace-context');
+
+      return (
+        angularApp
+          // The second argument reaches Angular through the REQUEST_CONTEXT token.
+          .handle(req, context)
+          .then((response) => {
+            if (!response) {
+              next();
+              return;
+            }
+
+            const renderMs = Date.now() - handleStartMs;
+            const report = bootReport();
+
+            if (coldStart) {
+              firstRenderMs = renderMs;
+            } else {
+              warmRenderCount++;
+              warmRenderTotalMs += renderMs;
+            }
+
+            // Exposes real timings to DevTools and to curl. `Server-Timing`
+            // renders as a waterfall in the network panel, so the split between
+            // startup and render is visible without reading a single log line.
+            const timings = [`render;dur=${renderMs}`];
+            if (warmupWaitMs > 0) {
+              timings.push(`warmup;dur=${warmupWaitMs}`);
+            }
+            if (coldStart) {
+              timings.push(`boot;dur=${report.eagerMs}`);
+            }
+
+            res.setHeader('Server-Timing', timings.join(', '));
+            res.setHeader('X-Instance-Id', instanceId);
+            res.setHeader('X-Cold-Start', String(coldStart));
+            res.setHeader('X-Boot-Ms', String(report.totalMs));
+
+            log(
+              'INFO',
+              `${req.method} ${req.url}`,
+              {
+                renderMs,
+                warmupWaitMs,
+                coldStart,
+                bootMs: coldStart ? report.totalMs : undefined,
+                requestNumber,
+                inFlight,
+                path: req.url,
+                status: response.status,
+              },
+              traceHeader,
+            );
+
+            return writeResponseToNodeResponse(response, res);
+          })
+          .catch((error: unknown) => {
+            log(
+              'ERROR',
+              `Failed to render ${req.url}`,
+              {
+                path: req.url,
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+              },
+              traceHeader,
+            );
+            next(error);
+          })
       );
-      next(error);
     })
     .finally(() => {
       inFlight--;
@@ -249,19 +399,31 @@ app.use((req, res, next) => {
 });
 
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
-  app.listen(port, (error) => {
-    if (error) {
-      throw error;
-    }
+  // The port stays closed until the eager startup stages finish. That is not an
+  // accident: Cloud Run decides an instance is ready the moment it accepts a
+  // connection, so opening early would route real traffic at a process that
+  // cannot serve it yet.
+  void startup.then(() => {
+    const report = bootReport();
 
-    log('INFO', 'Server ready to accept requests', {
-      port,
-      platform,
-      service: K_SERVICE,
-      revision: K_REVISION,
-      renderDelayMs,
-      bootMs: Date.now() - bootTime,
-      node: process.version,
+    app.listen(port, (error) => {
+      if (error) {
+        throw error;
+      }
+
+      log('INFO', 'Server ready to accept requests', {
+        port,
+        platform,
+        service: K_SERVICE,
+        revision: K_REVISION,
+        renderDelayMs,
+        bootProfile: report.profile,
+        bootMs: report.eagerMs,
+        bootStages: report.stages.map((stage) => `${stage.id}=${stage.durationMs}ms`),
+        indexedSkus: report.indexedSkus,
+        processReadyMs: report.processReadyMs,
+        node: process.version,
+      });
     });
   });
 }

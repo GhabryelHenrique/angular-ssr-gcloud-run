@@ -1,0 +1,128 @@
+/* I/O stages take the prerender blue, CPU stages the warning amber: the two
+   have different fixes, so they should not look alike. `--cpu-boost` moves the
+   amber bars and does nothing at all to the blue ones. */
+
+.stages {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1.1rem;
+}
+
+.stage__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.stage__label {
+  color: var(--on-surface);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.stage__kind {
+  padding: 0.05rem 0.5rem;
+  border: 1px solid var(--mode-prerender);
+  border-radius: var(--radius-full);
+  background: var(--mode-prerender-container);
+  color: var(--mode-prerender);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.stage__kind--cpu {
+  border-color: var(--warning);
+  background: var(--warning-container);
+  color: var(--warning);
+}
+
+.stage__duration {
+  margin-inline-start: auto;
+  color: var(--on-surface);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  display: flex;
+  height: 12px;
+  margin-top: 0.4rem;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  border: 1px solid var(--outline-variant);
+  overflow: hidden;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--mode-prerender);
+}
+
+.fill--cpu {
+  background: var(--warning);
+}
+
+/* Lazy stages are the ones the platform cannot see: the health check already
+   passed when they run. Dashing them keeps that distinction on screen. */
+.stage--lazy .track {
+  border-style: dashed;
+  border-color: var(--outline-interactive);
+}
+
+.stage__detail {
+  margin: 0.4rem 0 0;
+  color: var(--on-surface-variant);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1px;
+  margin: 1.6rem 0 0;
+  padding: 1px;
+  background: var(--outline);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+
+  > div {
+    padding: 0.85rem 1rem;
+    background: var(--surface-raised);
+  }
+
+  dt {
+    color: var(--on-surface-variant);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  dd {
+    margin: 0.3rem 0 0;
+    color: var(--on-surface);
+    font-family: var(--font-mono);
+    font-size: 1.2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.totals__strong {
+  color: var(--warning);
+}
+
+.empty {
+  color: var(--on-surface-variant);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}

@@ -1,0 +1,53 @@
+@let r = report();
+
+@if (r.stages.length) {
+  <div class="waterfall">
+    <ol class="stages">
+      @for (stage of rows(); track stage.id) {
+        <li class="stage" [class.stage--lazy]="stage.when === 'lazy'">
+          <div class="stage__head">
+            <span class="stage__label">{{ stage.label }}</span>
+            <span class="stage__kind" [class.stage__kind--cpu]="stage.kind === 'cpu'">
+              {{ stage.kind }}
+            </span>
+            <span class="stage__duration">{{ stage.durationLabel }}</span>
+          </div>
+
+          <div class="track">
+            <span
+              class="fill"
+              [class.fill--cpu]="stage.kind === 'cpu'"
+              [style.margin-inline-start.%]="stage.offsetPct"
+              [style.width.%]="stage.widthPct"
+            ></span>
+          </div>
+
+          <p class="stage__detail">{{ stage.detail }} · {{ stage.sharePct }}% of startup</p>
+        </li>
+      }
+    </ol>
+
+    <dl class="totals">
+      <div>
+        <dt>before the port opened</dt>
+        <dd>{{ eagerLabel() }}</dd>
+      </div>
+      <div>
+        <dt>billed to request #1</dt>
+        <dd>{{ lazyLabel() }}</dd>
+      </div>
+      <div>
+        <dt>total startup</dt>
+        <dd class="totals__strong">{{ totalLabel() }}</dd>
+      </div>
+      <div>
+        <dt>SKUs indexed</dt>
+        <dd>{{ r.indexedSkus.toLocaleString('en-US') }}</dd>
+      </div>
+    </dl>
+  </div>
+} @else {
+  <p class="empty">
+    No startup report available — this page was never rendered by the server.
+  </p>
+}

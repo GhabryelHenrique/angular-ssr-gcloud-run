@@ -1,4 +1,5 @@
 import { Component, afterNextRender, computed, inject } from '@angular/core';
+import { formatDuration } from '../../core/boot-report';
 import { TelemetryStore } from '../../core/telemetry';
 
 @Component({
@@ -26,6 +27,17 @@ export class TelemetryBar {
       `.${pad(date.getMilliseconds(), 3)}`
     );
   });
+
+  /**
+   * What this instance paid at startup.
+   *
+   * Shown on every request, warm ones included, because the interesting moment
+   * is the reload: the same instance reports the same startup cost next to a
+   * render time twenty times smaller.
+   */
+  protected readonly bootLabel = computed(() => formatDuration(this.store.boot().totalMs));
+
+  protected readonly showBoot = computed(() => this.store.boot().totalMs > 0);
 
   protected readonly uptimeLabel = computed(() => {
     const ms = this.telemetry()?.uptimeMs ?? 0;

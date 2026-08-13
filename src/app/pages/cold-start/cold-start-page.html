@@ -1,0 +1,107 @@
+@let t = telemetry();
+@let b = boot();
+
+<header class="header">
+  <h1>Anatomy of a cold start</h1>
+  <p class="explainer">
+    Every number below was measured by the process that rendered this page, and dies with it.
+    Reload and the startup column will not move — that cost was paid once — while the render
+    column drops to the warm figure. The gap between the two is the entire argument for
+    <code>--min-instances</code>.
+  </p>
+</header>
+
+@if (t) {
+  <section class="verdict" [class.verdict--cold]="t.coldStart">
+    <div class="verdict__side">
+      <span class="verdict__label">scaled to zero</span>
+      <span class="verdict__value verdict__value--cold">{{ scaleToZeroLabel() }}</span>
+      <span class="verdict__note">
+        provisioning + Node boot + startup stages + the first render
+      </span>
+    </div>
+
+    <div class="verdict__arrow" aria-hidden="true">→</div>
+
+    <div class="verdict__side">
+      <span class="verdict__label">instance already warm</span>
+      <span class="verdict__value verdict__value--warm">{{ warmLabel() }}</span>
+      <span class="verdict__note">
+        @if (t.warmSamples) {
+          mean of {{ t.warmSamples }} warm render{{ t.warmSamples === 1 ? '' : 's' }} on this
+          instance
+        } @else {
+          reload this page to start collecting warm samples
+        }
+      </span>
+    </div>
+
+    @if (ratio(); as factor) {
+      <div class="verdict__ratio">
+        <span class="verdict__ratio-value">{{ factor }}×</span>
+        <span class="verdict__label">difference</span>
+      </div>
+    }
+  </section>
+
+  <section class="panel">
+    <h2>Where the time went</h2>
+    <app-boot-waterfall [report]="b" />
+  </section>
+
+  <section class="panel">
+    <h2>This request</h2>
+    <dl class="facts">
+      <div>
+        <dt>state</dt>
+        <dd [class.facts__cold]="t.coldStart">{{ t.coldStart ? 'COLD' : 'WARM' }}</dd>
+      </div>
+      <div><dt>request #</dt><dd>{{ t.requestNumber }}</dd></div>
+      <div><dt>instance</dt><dd>{{ t.instanceId }}</dd></div>
+      <div><dt>process ready after</dt><dd>{{ readyLabel() }}</dd></div>
+      <div><dt>waited on startup</dt><dd>{{ format(t.warmupWaitMs) }}</dd></div>
+      <div><dt>first render</dt><dd>{{ format(t.firstRenderMs) }}</dd></div>
+      <div><dt>warm render, mean</dt><dd>{{ format(t.warmRenderAvgMs) }}</dd></div>
+      <div><dt>startup profile</dt><dd>{{ b.profile }}</dd></div>
+    </dl>
+  </section>
+
+  <section class="panel">
+    <h2>What actually fixes it</h2>
+
+    <ul class="fixes">
+      <li>
+        <strong>Keep one instance alive.</strong>
+        <code>--min-instances 1</code> does not make startup faster — it moves it off the
+        critical path of a real visitor. The cost still exists; nobody waits for it.
+      </li>
+      <li>
+        <strong>Give the CPU stages more CPU.</strong>
+        <code>--cpu-boost</code> raises the vCPU allocation during startup only. It moves the
+        amber bars above and does nothing to the blue ones, because you cannot compute your way
+        through a network round trip.
+      </li>
+      <li>
+        <strong>Make the eager work smaller, not the render faster.</strong>
+        Shaving 3 ms off a render that already takes 19 ms is invisible next to a
+        {{ format(b.eagerMs) }} startup. Index lazily, fetch secrets in parallel, and drop
+        whatever the first request does not need.
+      </li>
+      <li>
+        <strong>Move lazy work into eager work — or accept it.</strong>
+        The connection pool opens after the health check passes, so Cloud Run believes the
+        instance is ready while the first visitor is still waiting. Connecting during startup
+        makes the instance honest about when it is actually usable.
+      </li>
+    </ul>
+
+    <p class="footnote">
+      Startup weight is configurable: <code>BOOT_PROFILE=off | realistic | heavy</code>. The
+      demo scripts in <code>demo/</code> drive it from the outside.
+    </p>
+  </section>
+} @else {
+  <p class="empty">
+    This page was not rendered by the server, so there is no instance to report on.
+  </p>
+}

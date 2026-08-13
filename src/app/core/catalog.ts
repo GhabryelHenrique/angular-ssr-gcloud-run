@@ -1,139 +1,115 @@
-import { Injectable, PendingTasks, inject, signal } from '@angular/core';
-import { TelemetryStore } from './telemetry';
+import {
+  Injectable,
+  PendingTasks,
+  REQUEST_CONTEXT,
+  TransferState,
+  computed,
+  inject,
+  makeStateKey,
+  signal,
+} from '@angular/core';
+import { CATALOG, featuredSlice, type CatalogSlice, type Product } from './catalog-data';
+import { TelemetryStore, type ServerRenderContext } from './telemetry';
 
-export interface Product {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  stock: number;
-  description: string;
-}
+export type { Product } from './catalog-data';
 
-/**
- * The demo catalog.
- *
- * Price and stock are exactly the kind of content that justifies SSR: they
- * change constantly, so they cannot be baked into a build — yet they must be
- * present in the HTML, because search engine crawlers do not wait for
- * JavaScript to run.
- */
-const CATALOG: readonly Product[] = [
-  {
-    id: 'kb-01',
-    name: 'Mechanical Keyboard 75%',
-    category: 'Peripherals',
-    price: 129.9,
-    stock: 12,
-    description: 'Tactile switches, hot-swappable, aluminium case.',
-  },
-  {
-    id: 'ms-02',
-    name: 'Lightweight Wireless Mouse',
-    category: 'Peripherals',
-    price: 79.0,
-    stock: 4,
-    description: '58g, 26k DPI optical sensor.',
-  },
-  {
-    id: 'mn-03',
-    name: '27" 144Hz Monitor',
-    category: 'Displays',
-    price: 449.0,
-    stock: 3,
-    description: 'IPS, 1440p, factory calibrated.',
-  },
-  {
-    id: 'mn-04',
-    name: '16" Portable Monitor',
-    category: 'Displays',
-    price: 299.0,
-    stock: 0,
-    description: 'USB-C, 1080p, magnetic cover included.',
-  },
-  {
-    id: 'hp-05',
-    name: 'Noise Cancelling Headset',
-    category: 'Audio',
-    price: 349.0,
-    stock: 7,
-    description: '35h battery life, transparency mode.',
-  },
-  {
-    id: 'mc-06',
-    name: 'USB Cardioid Microphone',
-    category: 'Audio',
-    price: 159.0,
-    stock: 15,
-    description: 'Zero latency monitoring.',
-  },
-  {
-    id: 'dk-07',
-    name: 'Thunderbolt 4 Dock',
-    category: 'Connectivity',
-    price: 389.0,
-    stock: 2,
-    description: '96W charging, dual 4K displays.',
-  },
-  {
-    id: 'hb-08',
-    name: '7-in-1 USB-C Hub',
-    category: 'Connectivity',
-    price: 69.0,
-    stock: 23,
-    description: 'HDMI 4K60, SD reader, gigabit ethernet.',
-  },
-  {
-    id: 'ss-09',
-    name: '2TB NVMe SSD',
-    category: 'Storage',
-    price: 189.0,
-    stock: 9,
-    description: 'PCIe 4.0, 7,400 MB/s read.',
-  },
-  {
-    id: 'hd-10',
-    name: '5TB External Drive',
-    category: 'Storage',
-    price: 139.0,
-    stock: 6,
-    description: 'USB 3.2, bus powered.',
-  },
-  {
-    id: 'ch-11',
-    name: 'Ergonomic Chair',
-    category: 'Workspace',
-    price: 549.0,
-    stock: 1,
-    description: 'Mesh back, adjustable lumbar support.',
-  },
-  {
-    id: 'ar-12',
-    name: 'Monitor Arm',
-    category: 'Workspace',
-    price: 99.0,
-    stock: 18,
-    description: 'VESA 75/100, supports up to 9kg.',
-  },
-];
+const CATALOG_KEY = makeStateKey<CatalogSlice>('ssr-catalog');
+const PRODUCT_KEY = makeStateKey<Product | null>('ssr-product');
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * The catalog as the current page sees it.
+ *
+ * Nothing is fetched here. The server ran the query against the index it built
+ * at boot and handed the answer over through `REQUEST_CONTEXT`, so the results
+ * are already in the HTML by the time the browser parses it — the second use of
+ * the same TransferState bridge `TelemetryStore` documents.
+ */
 @Injectable({ providedIn: 'root' })
 export class CatalogStore {
   private readonly pendingTasks = inject(PendingTasks);
   private readonly telemetry = inject(TelemetryStore);
+  private readonly transferState = inject(TransferState);
+  private readonly requestContext = inject(REQUEST_CONTEXT, {
+    optional: true,
+  }) as ServerRenderContext | null;
 
-  private readonly items = signal<readonly Product[]>(CATALOG);
+  private readonly slice = signal<CatalogSlice>(this.resolveSlice());
 
-  readonly products = this.items.asReadonly();
+  /** The search result, or the curated rows when nobody searched. */
+  readonly results = this.slice.asReadonly();
+
+  /** Kept for the templates that only ever wanted the list of products. */
+  readonly products = computed(() => this.results().items);
+
+  /**
+   * Every product this session has seen, by id.
+   *
+   * Seeded with the curated rows and topped up from each rendered result page,
+   * which is what lets a click on a search result open the product page without
+   * a round trip: the row was already on screen, so its data is already here.
+   */
+  private readonly known = new Map<string, Product>();
 
   constructor() {
+    for (const product of CATALOG) {
+      this.known.set(product.id, product);
+    }
+    this.remember(this.slice().items);
+
+    const resolved = this.resolveProduct();
+    if (resolved) {
+      this.known.set(resolved.id, resolved);
+    }
+
     this.simulateSlowBackend();
   }
 
   byId(id: string): Product | undefined {
-    return CATALOG.find((product) => product.id === id);
+    return this.known.get(id);
+  }
+
+  private remember(items: readonly Product[]): void {
+    for (const product of items) {
+      this.known.set(product.id, product);
+    }
+  }
+
+  private resolveSlice(): CatalogSlice {
+    if (this.requestContext) {
+      const slice = this.requestContext.catalog;
+
+      // Only search results are worth transferring. The curated rows are a
+      // constant that already ships inside the bundle, so serializing them
+      // into the HTML would send the same twelve products twice — once as
+      // markup, once as JSON — for a value the client can produce itself.
+      if (!slice.featured) {
+        this.transferState.set(CATALOG_KEY, slice);
+      }
+
+      return slice;
+    }
+
+    // In the browser, or on a route that never reached the server: fall back to
+    // the curated rows, which ship inside the bundle.
+    return this.transferState.get(CATALOG_KEY, featuredSlice());
+  }
+
+  private resolveProduct(): Product | null {
+    if (this.requestContext) {
+      const product = this.requestContext.product;
+
+      // Same reasoning: a curated product is already in the bundle. Only a
+      // generated variant has to travel.
+      if (product && !this.known.has(product.id)) {
+        this.transferState.set(PRODUCT_KEY, product);
+      }
+
+      return product;
+    }
+
+    return this.transferState.get(PRODUCT_KEY, null);
   }
 
   /**
@@ -143,6 +119,11 @@ export class CatalogStore {
    * HTML; without it Angular would close the document before the response
    * arrived. Set `RENDER_DELAY_MS=800` to watch a slow backend inflate render
    * time — and to see that the cost belongs to the data source, not to SSR.
+   *
+   * Note how this differs from the startup stages in `src/boot/startup.ts`:
+   * this delay is paid on EVERY request, boot work is paid once per process.
+   * That distinction is the difference between a caching problem and a cold
+   * start problem.
    */
   private simulateSlowBackend(): void {
     const delay = this.telemetry.telemetry()?.renderDelayMs ?? 0;
@@ -152,7 +133,7 @@ export class CatalogStore {
 
     this.pendingTasks.run(async () => {
       await sleep(delay);
-      this.items.set(CATALOG);
+      this.slice.set({ ...this.slice() });
     });
   }
 }

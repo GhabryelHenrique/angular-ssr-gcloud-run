@@ -54,6 +54,13 @@
   color: var(--mode-client);
 }
 
+/* Startup cost carries the warning hue everywhere it appears — the same colour
+   the COLD START badge and the CPU bars on /cold-start use. */
+.value--boot {
+  color: var(--warning);
+  font-weight: 700;
+}
+
 .muted {
   color: var(--on-surface-variant);
   font-weight: 400;

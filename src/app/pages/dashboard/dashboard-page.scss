@@ -13,6 +13,17 @@ h1 {
   color: var(--on-surface);
 }
 
+h2 {
+  margin: 2.4rem 0 0.8rem;
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--on-surface);
+}
+
+a {
+  color: var(--primary);
+}
+
 code {
   color: var(--mode-client);
   font-family: var(--font-mono);
@@ -62,6 +73,10 @@ strong {
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
+}
+
+.metrics__boot {
+  color: var(--warning);
 }
 
 .footer {

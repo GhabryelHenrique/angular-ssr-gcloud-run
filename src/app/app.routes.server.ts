@@ -18,6 +18,14 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Server,
   },
 
+  // Reports on the process that rendered it, so it has to be that process
+  // doing the rendering. Prerendering this route would freeze the startup
+  // numbers of a build machine into the HTML.
+  {
+    path: 'cold-start',
+    renderMode: RenderMode.Server,
+  },
+
   // Same content for everyone, changes only on deploy: the build can handle it.
   // If your whole site looks like this, you may not need SSR at all.
   {

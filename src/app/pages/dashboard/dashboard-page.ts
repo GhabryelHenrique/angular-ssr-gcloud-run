@@ -1,4 +1,6 @@
-import { Component, afterNextRender, signal } from '@angular/core';
+import { Component, afterNextRender, computed, signal } from '@angular/core';
+import { emptyBootReport, formatDuration, type BootReport } from '../../core/boot-report';
+import { BootWaterfall } from '../../shared/boot-waterfall/boot-waterfall';
 
 interface InstanceResponse {
   instanceId: string;
@@ -9,6 +11,7 @@ interface InstanceResponse {
   port: string;
   revision: string;
   platform: string;
+  boot: BootReport;
 }
 
 /**
@@ -18,9 +21,14 @@ interface InstanceResponse {
  * tags. The user waits for the bundle to download, execute, and only then ask
  * for data — two round trips before the first useful pixel. It exists here as
  * the control group against the server-rendered routes.
+ *
+ * The startup breakdown below is the same one `/cold-start` shows, fetched
+ * instead of rendered — a direct comparison of the two ways to get a number
+ * onto a page.
  */
 @Component({
   selector: 'app-dashboard-page',
+  imports: [BootWaterfall],
   templateUrl: './dashboard-page.html',
   styleUrl: './dashboard-page.scss',
 })
@@ -28,6 +36,9 @@ export class DashboardPage {
   protected readonly data = signal<InstanceResponse | null>(null);
   protected readonly error = signal<string | null>(null);
   protected readonly fetchMs = signal<number | null>(null);
+
+  protected readonly boot = computed<BootReport>(() => this.data()?.boot ?? emptyBootReport());
+  protected readonly bootLabel = computed(() => formatDuration(this.boot().totalMs));
 
   constructor() {
     afterNextRender(() => this.load());

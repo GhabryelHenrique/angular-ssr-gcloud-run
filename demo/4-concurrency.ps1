@@ -49,6 +49,10 @@ function Measure-Burst {
   $arguments = @(
     'run', '-d', '--name', $name,
     '-e', "PORT=$Port",
+    # This test is about throughput, not startup: BOOT_PROFILE=off removes the
+    # index build and the connection pool so nothing but the render is measured.
+    # Script 3 is where startup work belongs.
+    '-e', 'BOOT_PROFILE=off',
     '-p', "${Port}:${Port}"
   )
   if ($Delay -gt 0) { $arguments += @('-e', "RENDER_DELAY_MS=$Delay") }

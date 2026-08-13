@@ -9,6 +9,11 @@
       <span class="value">{{ renderedAtLabel() }}</span>
       <span class="divider">·</span>
       <span class="value value--strong">{{ t.renderMs }}ms</span>
+      @if (showBoot()) {
+        <span class="divider">·</span>
+        <span class="label">boot</span>
+        <span class="value value--boot">{{ bootLabel() }}</span>
+      }
     </div>
 
     <div class="group">
