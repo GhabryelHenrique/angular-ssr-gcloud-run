@@ -7,15 +7,13 @@ import {
   makeStateKey,
   signal,
 } from '@angular/core';
+import { emptyBootReport, type BootReport } from './boot-report';
+import type { CatalogSlice, Product } from './catalog-data';
 
 /**
- * Per-request data that the server injects into every render.
- *
- * `server.ts` builds this object for each request and passes it to
- * `angularApp.handle(req, context)`. Inside Angular it arrives through the
- * `REQUEST_CONTEXT` injection token.
+ * What the server measured about the request currently being rendered.
  */
-export interface ServerRenderContext {
+export interface RequestTelemetry {
   /** Identifies the Node process. Changes whenever a new container starts. */
   instanceId: string;
   /** How many requests this process has served, including the current one. */
@@ -40,10 +38,40 @@ export interface ServerRenderContext {
   renderDelayMs: number;
   /** `Date.now()` when request handling began — the baseline for render timing. */
   handleStartMs: number;
+  /** What this process paid to become able to answer at all. */
+  boot: BootReport;
+  /** Milliseconds this request itself spent waiting for lazy startup work. */
+  warmupWaitMs: number;
+  /** What the very first render of this process cost. `null` while it runs. */
+  firstRenderMs: number | null;
+  /** Mean render time of the warm requests served so far. */
+  warmRenderAvgMs: number | null;
+  /** How many warm renders that mean is based on. */
+  warmSamples: number;
+}
+
+/**
+ * Per-request data that the server injects into every render.
+ *
+ * `server.ts` builds this object for each request and passes it to
+ * `angularApp.handle(req, context)`. Inside Angular it arrives through the
+ * `REQUEST_CONTEXT` injection token.
+ *
+ * It is grouped rather than flat because two different stores read it — the
+ * telemetry bar wants `telemetry`, the catalog wants `catalog` — and each one
+ * transfers only its own slice to the client. Flattening it would ship the
+ * whole object twice inside the HTML.
+ */
+export interface ServerRenderContext {
+  telemetry: RequestTelemetry;
+  /** Search results the server already resolved against its boot-time index. */
+  catalog: CatalogSlice;
+  /** The product for `/product/:id`, resolved server-side. `null` elsewhere. */
+  product: Product | null;
 }
 
 /** Telemetry shaped for display, with the derived values the UI needs. */
-export interface TelemetryView extends ServerRenderContext {
+export interface TelemetryView extends RequestTelemetry {
   /** ISO timestamp of the moment the server rendered this page. */
   renderedAt: string;
   /** Milliseconds between the start of request handling and this service booting. */
@@ -62,7 +90,8 @@ const TELEMETRY_KEY = makeStateKey<TelemetryView>('ssr-telemetry');
  * paying for a second round trip.
  *
  * This is the standard pattern for any server-only value that the UI must keep
- * showing after hydration.
+ * showing after hydration — `CatalogStore` uses it a second time, for the
+ * search results.
  */
 @Injectable({ providedIn: 'root' })
 export class TelemetryStore {
@@ -86,13 +115,32 @@ export class TelemetryStore {
     return this.hydrated() ? 'server · hydrated' : 'server (SSR)';
   });
 
+  /** The startup cost this instance paid, or an empty report on a CSR route. */
+  readonly boot = computed<BootReport>(() => this.state()?.boot ?? emptyBootReport());
+
+  /**
+   * What the visitor actually waited for, end to end on the server.
+   *
+   * On a warm request this is just the render. On a cold one it also includes
+   * the startup work — which is the whole point: the first visitor pays for
+   * everything the process had to do before it could answer.
+   */
+  readonly totalServerMs = computed(() => {
+    const view = this.state();
+    if (!view) {
+      return 0;
+    }
+    return view.coldStart ? view.renderMs + view.boot.eagerMs : view.renderMs;
+  });
+
   private resolve(): TelemetryView | null {
     // On the server: read the request context and stash it for the client.
     if (this.requestContext) {
+      const source = this.requestContext.telemetry;
       const view: TelemetryView = {
-        ...this.requestContext,
+        ...source,
         renderedAt: new Date().toISOString(),
-        renderMs: Date.now() - this.requestContext.handleStartMs,
+        renderMs: Date.now() - source.handleStartMs,
       };
       this.transferState.set(TELEMETRY_KEY, view);
 

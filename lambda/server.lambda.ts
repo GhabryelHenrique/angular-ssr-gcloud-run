@@ -1,4 +1,7 @@
 import { AngularAppEngine, createRequestHandler } from '@angular/ssr';
+import { bootReport, ensureWarm, inventory, startup } from '../src/boot/startup';
+import { featuredSlice } from '../src/app/core/catalog-data';
+import type { ServerRenderContext } from '../src/app/core/telemetry';
 
 /**
  * Alternative SSR entry point, for platforms that are not Node servers.
@@ -41,13 +44,79 @@ const allowedHosts = (process.env['ALLOWED_HOSTS'] ?? '')
 
 const angularApp = new AngularAppEngine({ allowedHosts });
 
+const instanceId = Math.random().toString(16).slice(2, 10);
+const bootTime = Date.now();
+
+let requestCount = 0;
+let firstRenderMs: number | null = null;
+let warmRenderCount = 0;
+let warmRenderTotalMs = 0;
+
 /**
- * Unlike `AngularNodeAppEngine`, this `handle` speaks web-standard `Request`
- * and `Response` — the same objects `fetch` uses. That is what allows the app
- * to run on Lambda, Cloudflare Workers, Deno, or any non-Node runtime.
+ * The startup sequence is shared with `src/server.ts` — and so is the problem.
+ *
+ * Lambda has no equivalent of `--min-instances`: provisioned concurrency exists
+ * but is billed by the hour whether or not anything calls the function, and an
+ * execution environment is reclaimed on the platform's schedule, not yours.
+ * The same {@link startup} work therefore gets paid more often here, which is
+ * the honest reason cold starts have a worse reputation on Lambda than on
+ * Cloud Run — not the runtime, the lifecycle.
  */
 export const reqHandler = createRequestHandler(async (request: Request) => {
-  const response = await angularApp.handle(request);
+  const arrivalMs = Date.now();
+  const requestNumber = ++requestCount;
+
+  await startup;
+  await ensureWarm();
+
+  const handleStartMs = Date.now();
+  const url = new URL(request.url);
+  const productId = /^\/product\/([^/]+)\/?$/.exec(url.pathname)?.[1];
+  const query = url.searchParams.get('q') ?? '';
+  const category = url.searchParams.get('category') ?? '';
+
+  const context: ServerRenderContext = {
+    telemetry: {
+      instanceId,
+      requestNumber,
+      coldStart: requestNumber === 1,
+      uptimeMs: handleStartMs - bootTime,
+      inFlight: 1,
+      peakInFlight: 1,
+      port: '',
+      service: process.env['AWS_LAMBDA_FUNCTION_NAME'] ?? '',
+      revision: process.env['AWS_LAMBDA_FUNCTION_VERSION'] ?? '',
+      // Lambda is not Cloud Run, and the UI should not pretend otherwise.
+      platform: 'local',
+      renderDelayMs: 0,
+      handleStartMs,
+      boot: bootReport(),
+      warmupWaitMs: handleStartMs - arrivalMs,
+      firstRenderMs,
+      warmRenderAvgMs: warmRenderCount ? Math.round(warmRenderTotalMs / warmRenderCount) : null,
+      warmSamples: warmRenderCount,
+    },
+    catalog:
+      url.pathname === '/' && (query.trim() || category.trim())
+        ? inventory().search({ query, category, limit: 24 })
+        : featuredSlice(),
+    product: productId ? (inventory().byId(decodeURIComponent(productId)) ?? null) : null,
+  };
+
+  /**
+   * Unlike `AngularNodeAppEngine`, this `handle` speaks web-standard `Request`
+   * and `Response` — the same objects `fetch` uses. That is what allows the app
+   * to run on Lambda, Cloudflare Workers, Deno, or any non-Node runtime.
+   */
+  const response = await angularApp.handle(request, context);
+
+  const renderMs = Date.now() - handleStartMs;
+  if (requestNumber === 1) {
+    firstRenderMs = renderMs;
+  } else {
+    warmRenderCount++;
+    warmRenderTotalMs += renderMs;
+  }
 
   return response ?? new Response('Not found', { status: 404 });
 });

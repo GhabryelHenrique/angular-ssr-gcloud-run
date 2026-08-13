@@ -14,6 +14,8 @@ one platform and not the other.
 | Infrastructure | one `gcloud run deploy` command | `template.yaml` (SAM) |
 | HTML streaming | default behaviour | Function URL with `InvokeMode: RESPONSE_STREAM` only |
 | Requests per instance | up to 80 concurrent | **one per execution environment** |
+| Keeping instances warm | `--min-instances 1`, billed per instance | provisioned concurrency, billed by the hour |
+| Diagnostic endpoints | `/healthz`, `/api/boot`, `/api/instance` | none — no router, each one is hand-routed |
 | Response ceiling | whatever HTTP allows | 6 MB buffered / 20 MB streamed |
 | Static assets (JS, CSS) | served by the same container | in practice CloudFront + S3 in front |
 
@@ -76,19 +78,36 @@ Push-Location $staging; node invoke.mjs; Pop-Location
 npm run build
 ```
 
-Verified result: `statusCode 200`, ~17 kB of HTML with the catalog rendered.
+Verified result, invoking the same handler four times in one process:
+
+```text
+cold  /             200  30,584 bytes  1,059 ms
+warm  /             200  30,575 bytes      33 ms
+warm  /?q=cobalt    200  44,644 bytes      42 ms   (2,947 matches)
+warm  /cold-start   200  31,296 bytes      28 ms
+```
+
+That first line is the whole point of this folder's second half: 1,059 ms
+against 33 ms, inside a single execution environment, for identical work.
 
 ## Two honest caveats
 
-**1. Telemetry was not ported.** `src/server.ts` instruments every request
-(instance identity, cold start, counters, structured logs) and injects that
-data into the render through `REQUEST_CONTEXT`. `server.lambda.ts` does not —
-so the telemetry bar falls back to its "no server data" state when the page is
-served by Lambda.
+**1. Telemetry had to be written twice.** `src/server.ts` instruments every
+request — instance identity, cold start, counters, structured logs — and injects
+it into the render through `REQUEST_CONTEXT`. `server.lambda.ts` now does the
+same, and that is precisely the cost being illustrated: the startup sequence in
+[`src/boot/startup.ts`](../src/boot/startup.ts) is shared, but the *plumbing
+around it* is about fifty lines that exist only because there is a second entry
+point.
 
-That is not an oversight; it is the argument. **Each entry point carries its
-own instrumentation.** Maintaining both means writing it, and keeping it
-correct, twice.
+Some of it could not be ported at all. There is no Express router here, so
+`/healthz`, `/api/boot` and `/api/search` have no equivalent — each would have
+to be hand-routed inside the handler. `inFlight` is always 1, because Lambda
+gives each execution environment one request at a time. Structured logs go to
+CloudWatch, which indexes a different JSON shape than Cloud Logging.
+
+**Each entry point carries its own instrumentation.** Maintaining both means
+writing it, and keeping it correct, twice.
 
 **2. `allowedHosts` had to be repeated.** Each engine gets its own instance, so
 Angular 22's SSRF protection had to be configured in both files. Forgetting it

@@ -1,0 +1,192 @@
+.header {
+  margin-bottom: 2rem;
+}
+
+h1 {
+  margin: 0 0 0.6rem;
+  font-size: 2.4rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--on-surface);
+}
+
+h2 {
+  margin: 0 0 1.2rem;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--on-surface);
+}
+
+.explainer {
+  max-width: 72ch;
+  margin: 0;
+  color: var(--on-surface-variant);
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+
+code {
+  color: var(--mode-server);
+  font-family: var(--font-mono);
+  font-size: 0.94em;
+}
+
+/* The headline comparison. Amber on the left, green on the right, and the
+   multiplier between them — readable from the back of a room. */
+.verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem 2.5rem;
+  padding: 1.6rem 1.8rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+.verdict--cold {
+  border-color: var(--warning);
+  background: var(--warning-container);
+}
+
+.verdict__side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 15rem;
+}
+
+.verdict__label {
+  color: var(--on-surface-variant);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.verdict__value {
+  font-family: var(--font-mono);
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.verdict__value--cold {
+  color: var(--warning);
+}
+
+.verdict__value--warm {
+  color: var(--mode-server);
+}
+
+.verdict__note {
+  max-width: 34ch;
+  color: var(--on-surface-variant);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.verdict__arrow {
+  color: var(--on-surface-variant);
+  font-size: 2rem;
+}
+
+.verdict__ratio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-inline-start: auto;
+  text-align: right;
+}
+
+.verdict__ratio-value {
+  color: var(--on-surface);
+  font-family: var(--font-mono);
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.panel {
+  padding: 1.6rem 1.8rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1px;
+  margin: 0;
+  padding: 1px;
+  background: var(--outline);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+
+  > div {
+    padding: 0.85rem 1rem;
+    background: var(--surface-raised);
+  }
+
+  dt {
+    color: var(--on-surface-variant);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  dd {
+    margin: 0.3rem 0 0;
+    color: var(--on-surface);
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.facts__cold {
+  color: var(--warning);
+}
+
+.fixes {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0 0 0 1.1rem;
+  max-width: 76ch;
+  color: var(--on-surface-variant);
+  line-height: 1.6;
+
+  strong {
+    color: var(--on-surface);
+    font-weight: 500;
+  }
+}
+
+.footnote {
+  margin: 1.5rem 0 0;
+  color: var(--on-surface-variant);
+  font-size: 0.9rem;
+}
+
+.empty {
+  color: var(--on-surface-variant);
+  font-family: var(--font-mono);
+}
+
+@media (width <= 720px) {
+  .verdict__arrow {
+    display: none;
+  }
+
+  .verdict__ratio {
+    margin-inline-start: 0;
+    text-align: left;
+  }
+}

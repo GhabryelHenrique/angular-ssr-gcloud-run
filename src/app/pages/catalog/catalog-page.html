@@ -1,31 +1,98 @@
+@let slice = results();
+
 <header class="header">
   <h1>Catalog</h1>
   <p class="explainer">
     Rendered on the server. Price and stock change constantly, so they cannot be baked into a
     static build — but they still need to be in the HTML, because crawlers do not wait for
-    JavaScript. Open <code>view-source:</code> and you will find all
-    {{ products().length }} products already there.
+    JavaScript. Open <code>view-source:</code> and you will find every product already there.
   </p>
+
+  <!--
+    A plain GET form, on purpose: no routerLink, no fetch, no JavaScript. The
+    browser navigates, the server queries the index it built at boot, and the
+    results arrive inside the HTML. This is the one search box that still works
+    with scripting disabled — and the only one a crawler can follow.
+  -->
+  <form class="search" method="get" action="/">
+    <label class="search__field">
+      <span class="search__hint">search {{ indexed() }} SKUs</span>
+      <input
+        type="search"
+        name="q"
+        [value]="slice.query"
+        placeholder="monitor, cobalt, storage…"
+        autocomplete="off"
+      />
+    </label>
+
+    @if (slice.category) {
+      <input type="hidden" name="category" [value]="slice.category" />
+    }
+
+    <button type="submit">Search</button>
+  </form>
+
+  @if (searched()) {
+    <p class="results-line">
+      <strong>{{ total() }}</strong> match{{ slice.total === 1 ? '' : 'es' }}
+      @if (slice.query) {
+        for <em>{{ slice.query }}</em>
+      }
+      @if (slice.category) {
+        in {{ slice.category }}
+      }
+      · index lookup took <strong>{{ slice.searchMs }} ms</strong> ·
+      <a href="/">clear</a>
+    </p>
+
+    @if (slice.categories.length) {
+      <ul class="facets">
+        @if (slice.category) {
+          <li>
+            <a class="facet facet--active" [href]="clearCategoryLink()">
+              {{ slice.category }} <span class="facet__count">×</span>
+            </a>
+          </li>
+        } @else {
+          @for (facet of slice.categories; track facet.name) {
+            <li>
+              <a class="facet" [href]="categoryLink(facet.name)">
+                {{ facet.name }} <span class="facet__count">{{ facet.count }}</span>
+              </a>
+            </li>
+          }
+        }
+      </ul>
+    }
+  }
 </header>
 
-<ul class="grid">
-  @for (product of products(); track product.id) {
-    <li class="card">
-      <a [routerLink]="['/product', product.id]" class="card__link">
-        <span class="card__category">{{ product.category }}</span>
-        <h2 class="card__name">{{ product.name }}</h2>
-        <p class="card__description">{{ product.description }}</p>
-        <div class="card__footer">
-          <span class="card__price">{{ product.price | price }}</span>
-          @if (product.stock === 0) {
-            <span class="stock stock--out">out of stock</span>
-          } @else if (product.stock <= 4) {
-            <span class="stock stock--low">only {{ product.stock }} left</span>
-          } @else {
-            <span class="stock">{{ product.stock }} in stock</span>
-          }
-        </div>
-      </a>
-    </li>
-  }
-</ul>
+@if (products().length) {
+  <ul class="grid">
+    @for (product of products(); track product.id) {
+      <li class="card">
+        <a [routerLink]="['/product', product.id]" class="card__link">
+          <span class="card__category">{{ product.category }}</span>
+          <h2 class="card__name">{{ product.name }}</h2>
+          <p class="card__description">{{ product.description }}</p>
+          <div class="card__footer">
+            <span class="card__price">{{ product.price | price }}</span>
+            @if (product.stock === 0) {
+              <span class="stock stock--out">out of stock</span>
+            } @else if (product.stock <= 4) {
+              <span class="stock stock--low">only {{ product.stock }} left</span>
+            } @else {
+              <span class="stock">{{ product.stock }} in stock</span>
+            }
+          </div>
+        </a>
+      </li>
+    }
+  </ul>
+} @else {
+  <p class="empty">
+    Nothing matched. The index holds {{ indexed() }} SKUs — try <a href="/?q=monitor">monitor</a>,
+    <a href="/?q=cobalt">cobalt</a> or <a href="/?q=nvme">nvme</a>.
+  </p>
+}

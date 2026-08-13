@@ -12,6 +12,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/product/product-page').then((m) => m.ProductPage),
   },
   {
+    path: 'cold-start',
+    title: 'Cold start · Angular SSR on Cloud Run',
+    loadComponent: () => import('./pages/cold-start/cold-start-page').then((m) => m.ColdStartPage),
+  },
+  {
     path: 'about',
     title: 'About · Angular SSR on Cloud Run',
     loadComponent: () => import('./pages/about/about-page').then((m) => m.AboutPage),

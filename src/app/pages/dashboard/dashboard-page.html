@@ -15,6 +15,7 @@
       <div><dt>uptime</dt><dd>{{ (d.uptimeMs / 1000).toFixed(1) }}s</dd></div>
       <div><dt>in flight now</dt><dd>{{ d.inFlight }}</dd></div>
       <div><dt>peak concurrency</dt><dd>{{ d.peakInFlight }}</dd></div>
+      <div><dt>startup cost</dt><dd class="metrics__boot">{{ bootLabel() }}</dd></div>
       <div><dt>PORT</dt><dd>{{ d.port }}</dd></div>
       <div><dt>platform</dt><dd>{{ d.platform }}</dd></div>
       @if (d.revision) {
@@ -26,6 +27,14 @@
       Fetched in {{ fetchMs() }}ms, <em>after</em> JavaScript took over.
       <button type="button" (click)="load()">refresh</button>
     </p>
+
+    <h2>What this instance paid to start</h2>
+    <p>
+      The same breakdown <a href="/cold-start">/cold-start</a> renders on the server, arriving
+      here over HTTP instead. Identical data, one extra round trip — that is the whole
+      difference between the two render modes, in one page.
+    </p>
+    <app-boot-waterfall [report]="boot()" />
   } @else if (error()) {
     <p class="error">Could not reach <code>/api/instance</code>: {{ error() }}</p>
   } @else {
